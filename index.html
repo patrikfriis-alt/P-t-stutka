@@ -692,6 +692,79 @@
   ::-webkit-scrollbar { width: 4px; }
   ::-webkit-scrollbar-track { background: var(--bg); }
   ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  /* ====== MOBIILI ====== */
+  @media (max-width: 768px) {
+
+    /* Nav */
+    nav {
+      padding: 12px 16px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .nav-links { gap: 2px; }
+    .nav-btn { padding: 6px 10px; font-size: 0.7rem; }
+    #nav-search { order: 3; width: 100%; }
+    .search-input { width: 100% !important; }
+
+    /* Dashboard */
+    .dashboard { padding: 16px; gap: 16px; }
+
+    /* Header */
+    .dash-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
+    }
+    .dash-date { font-size: 0.65rem; }
+    .dash-title { font-size: 1.5rem; }
+
+    /* Stats — 2x2 ruudukko */
+    .stats-row {
+      grid-template-columns: 1fr 1fr;
+    }
+    .stat-value { font-size: 1.4rem; }
+    .stat-label { font-size: 0.65rem; }
+    .stat-change { font-size: 0.65rem; }
+
+    /* Main grid */
+    .main-grid { grid-template-columns: 1fr; }
+
+    /* Side panel */
+    .side-panel { grid-template-columns: 1fr; }
+
+    /* Bottom grid */
+    .bottom-grid { grid-template-columns: 1fr; }
+
+    /* Filter row */
+    .filter-row { gap: 6px; padding: 10px 16px; flex-wrap: wrap; }
+    .filter-btn { font-size: 0.65rem; padding: 3px 8px; }
+
+    /* Decision items */
+    .decision-item { padding: 14px 16px; gap: 10px; }
+    .decision-title { font-size: 0.78rem; }
+    .decision-meta { font-size: 0.63rem; }
+    .decision-status { font-size: 0.6rem; padding: 2px 7px; }
+
+    /* Cards */
+    .card-header { padding: 14px 16px; }
+    .card-title { font-size: 0.8rem; }
+    .trend-row { padding: 10px 16px; }
+
+    /* Hero */
+    .hero h1 { font-size: 2.5rem; }
+    .features { grid-template-columns: 1fr; }
+
+    /* Modal */
+    .modal { padding: 24px 20px; }
+    .modal-title { font-size: 1.2rem; }
+  }
+
+  @media (max-width: 480px) {
+    .stats-row { grid-template-columns: 1fr 1fr; }
+    .stat-value { font-size: 1.2rem; }
+    nav .nav-btn.cta { display: none; }
+  }
 </style>
 </head>
 <body>
@@ -753,7 +826,7 @@
         <span>Kokkola — Päätöstuki</span>
         Dashboard
       </div>
-      <div class="dash-date">Tiistai 25. helmikuuta 2026</div>
+      <div class="dash-date" id="dash-date">Tiistai 25. helmikuuta 2026</div>
     </div>
 
     <!-- Stats -->
