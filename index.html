@@ -1231,7 +1231,7 @@
 
       // Update badge count
       document.querySelector('.card-badge').textContent = items.length + ' kpl';
-      applyFilters();
+      if (activeFilter !== 'all') applyFilters();
 
     } catch (e) {
       list.innerHTML = '<div style="padding:32px 24px;text-align:center;color:var(--red);font-size:0.8rem;">⚠️ Virhe ladattaessa päätöksiä. Kokeile hetken kuluttua uudelleen.</div>';
@@ -1309,7 +1309,7 @@
         el.addEventListener('click', () => openModal(meetingTitle, desc || 'Ei kuvausta.', issuer + (dateStr ? ' - ' + dateStr : ''), link));
         list.appendChild(el);
       });
-      applyFilters();
+      if (activeFilter !== 'all') applyFilters();
 
     } catch(e) {
       console.error('Virhe ladattaessa kokousasioita:', e);
@@ -1496,3 +1496,4 @@
 </script>
 </body>
 </html>
+
