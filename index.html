@@ -674,6 +674,8 @@
   .filter-btn.f-upcoming.active { background: var(--amber); border-color: var(--amber); color: #000; }
   .filter-btn.f-review.active { background: var(--cyan); border-color: var(--cyan); color: #000; }
   .filter-btn.f-meeting.active { background: var(--cyan); border-color: var(--cyan); color: #000; }
+  .filter-btn.f-meeting-future.active { background: var(--green); border-color: var(--green); color: #000; }
+  .filter-btn.f-meeting-past.active { background: var(--text3); border-color: var(--text3); color: #000; }
 
   /* SEARCH EMPTY STATE */
   .search-empty {
@@ -689,6 +691,27 @@
     border-radius: 2px;
     padding: 0 2px;
   }
+
+  /* MEETING TABS */
+  .meeting-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 0 16px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .meeting-tab {
+    background: none;
+    border: 1px solid var(--border2);
+    color: var(--text2);
+    font-size: 0.7rem;
+    padding: 4px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-family: 'Syne', sans-serif;
+    transition: all 0.15s;
+  }
+  .meeting-tab:hover { border-color: var(--accent); color: var(--accent); }
+  .meeting-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 
   /* SCROLLBAR */
   ::-webkit-scrollbar { width: 4px; }
@@ -872,11 +895,9 @@
         <div class="filter-row">
           <span class="filter-label">Suodata:</span>
           <button class="filter-btn active" onclick="setFilter('all', this)">Kaikki</button>
-          <button class="filter-btn f-upcoming" onclick="setFilter('upcoming', this)">Tulevat</button>
-          <button class="filter-btn f-passed" onclick="setFilter('passed', this)">Hyväksytyt</button>
-          <button class="filter-btn f-rejected" onclick="setFilter('rejected', this)">Hylätyt</button>
-          <button class="filter-btn f-review" onclick="setFilter('review', this)">Lausunto</button>
-          <button class="filter-btn f-meeting" onclick="setFilter('meeting', this)">Kokous</button>
+          <button class="filter-btn f-passed" onclick="setFilter('viranomais', this)">Viranomaispäätökset</button>
+          <button class="filter-btn f-review" onclick="setFilter('paatokset', this)">Tehdyt päätökset</button>
+          <button class="filter-btn f-upcoming" onclick="setFilter('esitykset', this)">Esitykset</button>
         </div>
 
         <div id="decisions-list">
@@ -898,7 +919,11 @@
 
         <div class="mini-card">
           <div class="card-header">
-            <div class="card-title">Seuraavat kokoukset</div>
+            <div class="card-title">Kokoukset</div>
+          </div>
+          <div class="meeting-tabs">
+            <button class="meeting-tab active" onclick="switchMeetingTab('future', this)">Tulevat</button>
+            <button class="meeting-tab" onclick="switchMeetingTab('past', this)">Menneet</button>
           </div>
           <div id="upcoming-meetings-list">
             <div style="padding:16px;text-align:center;color:var(--text3);font-size:0.78rem;">⏳ Ladataan...</div>
@@ -1188,6 +1213,7 @@
         el.className = 'decision-item';
         el.dataset.status = 'passed';
         el.dataset.text = (title + ' ' + desc).toLowerCase();
+        if (pubDate) { const pd = new Date(pubDate); if (!isNaN(pd)) el.dataset.date = pd.toISOString(); }
         el.innerHTML = `
           <div class="decision-dot" style="background: var(--green)"></div>
           <div class="decision-content">
@@ -1236,10 +1262,15 @@
       document.querySelector('.card-badge').textContent = (current + items.length) + ' kpl';
 
       items.forEach(item => {
-        const title   = item.querySelector('title')?.textContent || '–';
-        const desc    = item.querySelector('description')?.textContent || '';
-        const link    = item.querySelector('link')?.textContent || '#';
-        const pubDate = item.querySelector('pubDate')?.textContent || '';
+        const getTag = (tag) => {
+          const el = item.querySelector(tag);
+          if (!el) return '';
+          return (el.textContent || el.innerHTML || '').replace(/<!\[CDATA\[|\]\]>/g, '').trim();
+        };
+        const title   = getTag('title') || '–';
+        const desc    = getTag('description') || '';
+        const link    = getTag('link') || '#';
+        const pubDate = getTag('pubDate') || '';
 
         let dateStr = '';
         if (pubDate) {
@@ -1259,6 +1290,12 @@
         el.className = 'decision-item';
         el.dataset.status = 'meeting';
         el.dataset.text = (title + ' ' + desc).toLowerCase();
+        // Extract meeting date from title e.g. "monikulttuurisuusneuvosto 04.03.2026 / Asia"
+        const dmatch = title.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+        if (dmatch) {
+          const md = new Date(parseInt(dmatch[3]), parseInt(dmatch[2])-1, parseInt(dmatch[1]));
+          if (!isNaN(md.getTime())) el.dataset.date = md.toISOString();
+        }
         el.innerHTML =
           '<div class="decision-dot" style="background: var(--cyan)"></div>' +
           '<div class="decision-content">' +
@@ -1278,6 +1315,44 @@
     }
   }
 
+  let allAgendaItems = [];
+
+  function switchMeetingTab(tab, btn) {
+    document.querySelectorAll('.meeting-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderAgendas(tab);
+  }
+
+  function renderAgendas(tab) {
+    const list = document.getElementById('upcoming-meetings-list');
+    if (!list) return;
+    const now = new Date();
+
+    const filtered = allAgendaItems.filter(item => {
+      const d = item.date ? new Date(item.date) : null;
+      if (tab === 'future') return !d || d >= now;
+      if (tab === 'past')   return d && d < now;
+      return true;
+    }).slice(0, 8);
+
+    list.innerHTML = '';
+    if (!filtered.length) {
+      list.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:0.78rem;">Ei kokouksia</div>';
+      return;
+    }
+
+    filtered.forEach(item => {
+      const el = document.createElement('div');
+      el.className = 'upcoming-item';
+      el.innerHTML = '<a href="' + item.link + '" target="_blank">' +
+        (item.dateStr ? '<div class="upcoming-date">' + item.dateStr + '</div>' : '') +
+        '<div class="upcoming-title">' + item.title + '</div>' +
+        '<div class="upcoming-body">Avaa esityslista →</div>' +
+        '</a>';
+      list.appendChild(el);
+    });
+  }
+
   async function loadAgendas() {
     const list = document.getElementById('upcoming-meetings-list');
     if (!list) return;
@@ -1291,42 +1366,41 @@
       const xml = parser.parseFromString(text, 'application/xml');
       const items = Array.from(xml.querySelectorAll('item'));
 
-      const now = new Date();
-      // Filter only future meetings and sort by date
-      const future = items.filter(item => {
-        const pubDate = item.querySelector('pubDate')?.textContent || '';
-        if (!pubDate) return true;
-        const d = new Date(pubDate);
-        return isNaN(d) || d >= now;
-      }).slice(0, 5);
+      allAgendaItems = items.map(item => {
+        const fullTitle = item.querySelector('title')?.textContent || '–';
+        const linkUrl   = item.querySelector('link')?.textContent || '#';
 
-      list.innerHTML = '';
-
-      if (!future.length) {
-        list.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:0.78rem;">Ei tulevia kokouksia</div>';
-        return;
-      }
-
-      future.forEach(item => {
-        const title   = item.querySelector('title')?.textContent || '–';
-        const linkUrl = item.querySelector('link')?.textContent || '#';
-        const pubDate = item.querySelector('pubDate')?.textContent || '';
-
+        // Extract date from title: "Kaupunginhallitus 03.03.2026" -> "03.03.2026"
+        const dateMatch = fullTitle.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
         let dateStr = '';
-        if (pubDate) {
-          const d = new Date(pubDate);
-          if (!isNaN(d)) dateStr = d.toLocaleDateString('fi-FI', {weekday:'short', day:'numeric', month:'numeric', year:'numeric'});
+        let date = null;
+        let title = fullTitle;
+        if (dateMatch) {
+          const [, day, mon, year] = dateMatch;
+          const d = new Date(year, mon - 1, day);
+          if (!isNaN(d.getTime())) {
+            date = d.toISOString();
+            dateStr = d.toLocaleDateString('fi-FI', {weekday:'short', day:'numeric', month:'numeric', year:'numeric'});
+          }
+          // Remove date from title display
+          title = fullTitle.replace(dateMatch[0], '').trim();
         }
-
-        const el = document.createElement('div');
-        el.className = 'upcoming-item';
-        el.innerHTML = '<a href="' + linkUrl + '" target="_blank">' +
-          (dateStr ? '<div class="upcoming-date">' + dateStr + '</div>' : '') +
-          '<div class="upcoming-title">' + title + '</div>' +
-          '<div class="upcoming-body">Avaa esityslista →</div>' +
-          '</a>';
-        list.appendChild(el);
+        return { title, link: linkUrl, date, dateStr };
       });
+
+      // Sort: future ascending, past descending
+      const now = new Date();
+      allAgendaItems.sort((a, b) => {
+        const da = a.date ? new Date(a.date) : now;
+        const db = b.date ? new Date(b.date) : now;
+        const aFuture = da >= now;
+        const bFuture = db >= now;
+        if (aFuture && bFuture) return da - db; // tulevat: lähimmät ensin
+        if (!aFuture && !bFuture) return db - da; // menneet: uusimmat ensin
+        return 0;
+      });
+
+      renderAgendas('future');
 
     } catch(e) {
       list.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:0.78rem;">Virhe ladattaessa kokouksia</div>';
@@ -1355,12 +1429,30 @@
   }
 
   function applyFilters() {
+    const now = new Date();
     const items = document.querySelectorAll('#decisions-list .decision-item');
     let visible = 0;
     items.forEach(item => {
       const status = item.dataset.status;
       const text = (item.dataset.text + ' ' + item.innerText).toLowerCase();
-      const matchFilter = activeFilter === 'all' || status === activeFilter;
+      const itemDate = item.dataset.date ? new Date(item.dataset.date) : null;
+
+      let matchFilter = false;
+      if (activeFilter === 'all') {
+        matchFilter = true;
+      } else if (activeFilter === 'viranomais') {
+        // Viranomaispäätökset: vain RSS /decisions
+        matchFilter = status === 'passed';
+      } else if (activeFilter === 'paatokset') {
+        // Tehdyt päätökset: menneet kokousasiat
+        matchFilter = status === 'meeting' && itemDate && itemDate < now;
+      } else if (activeFilter === 'esitykset') {
+        // Esitykset: tulevat kokousasiat
+        matchFilter = status === 'meeting' && (!itemDate || itemDate >= now);
+      } else {
+        matchFilter = status === activeFilter;
+      }
+
       const matchQuery = !activeQuery || text.includes(activeQuery);
       const show = matchFilter && matchQuery;
       item.style.display = show ? '' : 'none';
