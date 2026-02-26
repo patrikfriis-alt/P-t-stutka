@@ -1309,6 +1309,7 @@
         el.addEventListener('click', () => openModal(meetingTitle, desc || 'Ei kuvausta.', issuer + (dateStr ? ' - ' + dateStr : ''), link));
         list.appendChild(el);
       });
+      applyFilters();
 
     } catch(e) {
       console.error('Virhe ladattaessa kokousasioita:', e);
