@@ -467,6 +467,8 @@
   }
   .upcoming-item:last-child { border-bottom: none; }
   .upcoming-item:hover { background: var(--bg3); }
+  .upcoming-item a { text-decoration: none; color: inherit; display: block; }
+  .upcoming-item a:hover .upcoming-title { color: var(--accent); }
 
   .upcoming-date {
     font-size: 0.65rem;
@@ -898,20 +900,8 @@
           <div class="card-header">
             <div class="card-title">Seuraavat kokoukset</div>
           </div>
-          <div class="upcoming-item">
-            <div class="upcoming-date">Ma 3.3.2026 — 17:00</div>
-            <div class="upcoming-title">Kaupunginhallitus</div>
-            <div class="upcoming-body">5 asiaa esityslistalla</div>
-          </div>
-          <div class="upcoming-item">
-            <div class="upcoming-date">Ti 10.3.2026 — 16:30</div>
-            <div class="upcoming-title">Sivistyslautakunta</div>
-            <div class="upcoming-body">3 asiaa esityslistalla</div>
-          </div>
-          <div class="upcoming-item">
-            <div class="upcoming-date">Ti 17.3.2026 — 18:00</div>
-            <div class="upcoming-title">Kaupunginvaltuusto</div>
-            <div class="upcoming-body">Kouluverkkoselvitys, talousraportti</div>
+          <div id="upcoming-meetings-list">
+            <div style="padding:16px;text-align:center;color:var(--text3);font-size:0.78rem;">⏳ Ladataan...</div>
           </div>
         </div>
 
@@ -1085,24 +1075,22 @@
       }
     }
 
-    // Työttömyys haetaan työnvälitystilastosta - kuukausitaso, Keski-Pohjanmaa (MK16)
-    // Haetaan 2 viimeisintä kuukautta vertailua varten
+    // Työttömyysaste haetaan Tilastokeskukselta - Kokkola (KU272), kuukausitaso
     try {
-      const tyoUrl = 'https://pxdata.stat.fi/PxWeb/api/v1/fi/StatFin/tyonv/statfin_tyonv_pxt_12tl.px';
+      const tyoUrl = 'https://pxdata.stat.fi/PxWeb/api/v1/fi/StatFin/tyonv/statfin_tyonv_pxt_12tf.px';
 
-      // Hae metadata saadaksemme viimeisimmät kuukaudet
+      // Hae metadata viimeisimmät kuukaudet
       const metaRes = await fetch(tyoUrl);
       const meta = await metaRes.json();
       const kuukaudet = meta.variables.find(v => v.code === 'Kuukausi').values;
       const uusinKk = kuukaudet[kuukaudet.length - 1];
-      const edellinenKk = kuukaudet[kuukaudet.length - 2];
+      const edellinenKk = kuukaudet[kuukaudet.length - 13]; // vuosi sitten
 
       const tyoBody = {
         query: [
-          { code: 'Alue',          selection: { filter: 'item', values: ['MK16'] } },
-          { code: 'Työllisyyskoodi', selection: { filter: 'item', values: ['03'] } }, // Työtön
-          { code: 'Kuukausi',      selection: { filter: 'item', values: [uusinKk, edellinenKk] } },
-          { code: 'Tiedot',        selection: { filter: 'item', values: ['HAKUALKOI'] } }
+          { code: 'Alue',     selection: { filter: 'item', values: ['KU272'] } },
+          { code: 'Kuukausi', selection: { filter: 'item', values: [uusinKk, edellinenKk] } },
+          { code: 'Tiedot',   selection: { filter: 'item', values: ['TYOTOSUUS'] } }
         ],
         response: { format: 'json' }
       };
@@ -1114,20 +1102,21 @@
       });
       const tyoData = await tyoRes.json();
 
-      const uusinArvo = parseInt(tyoData.data[0]?.values[0]);
-      const edellinenArvo = parseInt(tyoData.data[1]?.values[0]);
+      const uusinArvo = parseFloat(tyoData.data[0]?.values[0]);
+      const edellinenArvo = parseFloat(tyoData.data[1]?.values[0]);
 
       if (!isNaN(uusinArvo)) {
-        document.getElementById('stat-tyottomyys').textContent = uusinArvo.toLocaleString('fi-FI');
-        document.getElementById('stat-tyottomyys-change').parentElement.querySelector('.stat-label').textContent = 'Työttömät (MK16)';
+        document.getElementById('stat-tyottomyys').textContent = uusinArvo.toFixed(1) + '%';
+        const kkLabel = uusinKk.replace('M', '/');
 
         if (!isNaN(edellinenArvo)) {
           const diff = uusinArvo - edellinenArvo;
           const sign = diff >= 0 ? '+' : '';
           const changeEl = document.getElementById('stat-tyottomyys-change');
-          const kkLabel = uusinKk.replace('M', '/');
-          changeEl.textContent = `${sign}${diff.toLocaleString('fi-FI')} hlö (${kkLabel})`;
+          changeEl.textContent = sign + diff.toFixed(1) + '% vs vuosi sitten (' + kkLabel + ')';
           changeEl.className = 'stat-change ' + (diff > 0 ? 'up' : diff < 0 ? 'down' : 'neutral');
+        } else {
+          document.getElementById('stat-tyottomyys-change').textContent = kkLabel;
         }
       }
     } catch(e) {
@@ -1149,6 +1138,7 @@
       loadDecisions();
       loadStats();
       loadMeetings();
+      loadAgendas();
     }
     document.getElementById('nav-search').style.display = name === 'dashboard' ? 'flex' : 'none';
   }
@@ -1236,7 +1226,12 @@
 
       if (!items.length) return;
 
-      // Update badge
+      // Update 'tulevia päätöksiä' counter with meeting count
+      document.getElementById('stat-paatokset').textContent = items.length;
+
+      // Fill 'Seuraavat kokoukset' is handled separately by loadAgendas()
+
+      // Update decisions badge
       const current = parseInt(document.querySelector('.card-badge').textContent) || 0;
       document.querySelector('.card-badge').textContent = (current + items.length) + ' kpl';
 
@@ -1280,6 +1275,61 @@
 
     } catch(e) {
       console.error('Virhe ladattaessa kokousasioita:', e);
+    }
+  }
+
+  async function loadAgendas() {
+    const list = document.getElementById('upcoming-meetings-list');
+    if (!list) return;
+
+    try {
+      const res = await fetch('https://kaupunki.onrender.com/agendas');
+      const buffer = await res.arrayBuffer();
+      let text = new TextDecoder('windows-1252').decode(buffer);
+      text = text.replace(/encoding="[^"]+"/i, 'encoding="utf-8"');
+      const parser = new DOMParser();
+      const xml = parser.parseFromString(text, 'application/xml');
+      const items = Array.from(xml.querySelectorAll('item'));
+
+      const now = new Date();
+      // Filter only future meetings and sort by date
+      const future = items.filter(item => {
+        const pubDate = item.querySelector('pubDate')?.textContent || '';
+        if (!pubDate) return true;
+        const d = new Date(pubDate);
+        return isNaN(d) || d >= now;
+      }).slice(0, 5);
+
+      list.innerHTML = '';
+
+      if (!future.length) {
+        list.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:0.78rem;">Ei tulevia kokouksia</div>';
+        return;
+      }
+
+      future.forEach(item => {
+        const title   = item.querySelector('title')?.textContent || '–';
+        const linkUrl = item.querySelector('link')?.textContent || '#';
+        const pubDate = item.querySelector('pubDate')?.textContent || '';
+
+        let dateStr = '';
+        if (pubDate) {
+          const d = new Date(pubDate);
+          if (!isNaN(d)) dateStr = d.toLocaleDateString('fi-FI', {weekday:'short', day:'numeric', month:'numeric', year:'numeric'});
+        }
+
+        const el = document.createElement('div');
+        el.className = 'upcoming-item';
+        el.innerHTML = '<a href="' + linkUrl + '" target="_blank">' +
+          (dateStr ? '<div class="upcoming-date">' + dateStr + '</div>' : '') +
+          '<div class="upcoming-title">' + title + '</div>' +
+          '<div class="upcoming-body">Avaa esityslista →</div>' +
+          '</a>';
+        list.appendChild(el);
+      });
+
+    } catch(e) {
+      list.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:0.78rem;">Virhe ladattaessa kokouksia</div>';
     }
   }
 
