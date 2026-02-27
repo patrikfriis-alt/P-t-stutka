@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PäätösTuki — Paikallinen demokratia</title>
+<title>PäätösTutka — Kokkola</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
 <style>
@@ -802,7 +802,7 @@
 
 <!-- NAV -->
 <nav>
-  <div class="nav-logo">Päätös<span>Tuki</span></div>
+  <div class="nav-logo">Päätös<span>Tutka</span></div>
   <div class="search-wrap" id="nav-search" style="display:none">
     <span class="search-icon">🔍</span>
     <input class="search-input" id="searchInput" type="text" placeholder="Hae päätöksiä..." oninput="handleSearch(this.value)" onkeydown="if(event.key==='Escape'){clearSearch()}">
@@ -854,8 +854,9 @@
     <!-- Header -->
     <div class="dash-header">
       <div class="dash-title">
-        <span>Kokkola — Päätöstuki</span>
-        Dashboard
+        <span>PäätösTutka</span>
+        <span style="font-size:1rem;font-weight:600;color:var(--cyan);display:block;margin-top:3px;">Kokkola</span>
+        <span style="font-size:0.72rem;font-weight:400;opacity:0.6;display:block;">Päätökset ja kokousasiat</span>
       </div>
       <div class="dash-date" id="dash-date">Tiistai 25. helmikuuta 2026</div>
     </div>
@@ -905,6 +906,7 @@
             ⏳ Ladataan päätöksiä...
           </div>
         </div>
+        <button id="show-more-btn" onclick="showAll=true;applyFilters()" style="display:none;width:100%;padding:12px;margin-top:8px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;font-size:0.85rem;">Näytä kaikki päätökset ▼</button>
         <div class="search-empty" id="search-empty">
           <div class="search-empty-icon">🔍</div>
           <div class="search-empty-text">Ei hakutuloksia</div>
@@ -1151,6 +1153,7 @@
   }
 
   let activeFilter = 'all';
+  let showAll = false;
   let activeQuery = '';
 
   function showView(name) {
@@ -1410,6 +1413,7 @@
 
   function setFilter(filter, btn) {
     activeFilter = filter;
+    showAll = false;
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     applyFilters();
@@ -1445,8 +1449,8 @@
         // Viranomaispäätökset: vain RSS /decisions
         matchFilter = status === 'passed';
       } else if (activeFilter === 'paatokset') {
-        // Tehdyt päätökset: menneet kokousasiat
-        matchFilter = status === 'meeting' && itemDate && itemDate < now;
+        // Tehdyt päätökset: viranomaispäätökset + menneet kokousasiat
+        matchFilter = status === 'passed' || (status === 'meeting' && itemDate && itemDate < now);
       } else if (activeFilter === 'esitykset') {
         // Esitykset: tulevat kokousasiat
         matchFilter = status === 'meeting' && (!itemDate || itemDate >= now);
@@ -1471,7 +1475,22 @@
         visible++;
       }
     });
+
+    // Näytä oletuksena vain 10, ellei showAll tai hakusana aktiivinen
+    if (!showAll && !activeQuery) {
+      let shown = 0;
+      items.forEach(item => {
+        if (item.style.display !== 'none') {
+          shown++;
+          if (shown > 10) item.style.display = 'none';
+        }
+      });
+      visible = Math.min(visible, 10);
+    }
+
     document.getElementById('search-empty').style.display = visible === 0 ? 'block' : 'none';
+    const showMoreBtn = document.getElementById('show-more-btn');
+    if (showMoreBtn) showMoreBtn.style.display = (!showAll && !activeQuery && visible >= 10) ? 'block' : 'none';
   }
 
   function openModal(title, body, tag, link) {
@@ -1496,4 +1515,3 @@
 </script>
 </body>
 </html>
-
