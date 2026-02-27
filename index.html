@@ -1623,7 +1623,17 @@
       if (!el) continue;
       try {
         const res = await fetch('https://kaupunki.onrender.com/news/' + aihe);
-        const items = await res.json();
+        let items = await res.json();
+        // Järjestä uusimmasta vanhimpaan päivämäärän mukaan
+        items.sort((a, b) => {
+          const parseDate = s => {
+            if (!s) return 0;
+            const m = s.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+            if (m) return new Date(m[3], m[2]-1, m[1]).getTime();
+            return new Date(s).getTime() || 0;
+          };
+          return parseDate(b.julkaistu) - parseDate(a.julkaistu);
+        });
         if (!items || items.length === 0) {
           el.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:0.78rem;">Ei uutisia saatavilla</div>';
           continue;
