@@ -1309,7 +1309,7 @@
 
       // Update badge count
       document.querySelector('.card-badge').textContent = items.length + ' kpl';
-      if (activeFilter !== 'all') applyFilters();
+      applyFilters();
 
     } catch (e) {
       list.innerHTML = '<div style="padding:32px 24px;text-align:center;color:var(--red);font-size:0.8rem;">⚠️ Virhe ladattaessa päätöksiä. Kokeile hetken kuluttua uudelleen.</div>';
@@ -1387,7 +1387,7 @@
         el.addEventListener('click', () => openModal(meetingTitle, desc || 'Ei kuvausta.', issuer + (dateStr ? ' - ' + dateStr : ''), link));
         list.appendChild(el);
       });
-      if (activeFilter !== 'all') applyFilters();
+      applyFilters();
 
     } catch(e) {
       console.error('Virhe ladattaessa kokousasioita:', e);
@@ -1600,21 +1600,21 @@
       }
     });
 
-    // Näytä oletuksena vain 10, ellei showAll tai hakusana aktiivinen
+    // Näytä oletuksena vain 15, ellei showAll tai hakusana aktiivinen
     if (!showAll && !activeQuery) {
       let shown = 0;
       items.forEach(item => {
         if (item.style.display !== 'none') {
           shown++;
-          if (shown > 10) item.style.display = 'none';
+          if (shown > 15) item.style.display = 'none';
         }
       });
-      visible = Math.min(visible, 10);
+      visible = Math.min(visible, 15);
     }
 
     document.getElementById('search-empty').style.display = visible === 0 ? 'block' : 'none';
     const showMoreBtn = document.getElementById('show-more-btn');
-    if (showMoreBtn) showMoreBtn.style.display = (!showAll && !activeQuery && visible >= 10) ? 'block' : 'none';
+    if (showMoreBtn) showMoreBtn.style.display = (!showAll && !activeQuery && visible >= 15) ? 'block' : 'none';
   }
 
   async function loadNews() {
