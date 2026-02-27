@@ -964,41 +964,50 @@
       </div>
     </div>
 
-    <!-- Kokoukset & kaavio -->
-    <div class="side-panel">
 
-        <div class="mini-card">
-          <div class="card-header">
-            <div class="card-title">Kokoukset</div>
-          </div>
-          <div class="meeting-tabs">
-            <button class="meeting-tab active" onclick="switchMeetingTab('future', this)">Tulevat</button>
-            <button class="meeting-tab" onclick="switchMeetingTab('past', this)">Menneet</button>
-          </div>
-          <div id="upcoming-meetings-list">
-            <div style="padding:16px;text-align:center;color:var(--text3);font-size:0.78rem;">⏳ Ladataan...</div>
-          </div>
-        </div>
 
-        <!-- Bar chart: kuukausipäätökset -->
-        <div class="mini-card">
-          <div class="card-header">
-            <div class="card-title">Päätöksiä / kk</div>
-          </div>
-          <div class="chart-area">
-            <div class="chart-bars">
-              <div class="bar-group"><div class="bar" style="height:55%"></div><div class="bar-label">ELO</div></div>
-              <div class="bar-group"><div class="bar" style="height:70%"></div><div class="bar-label">SYY</div></div>
-              <div class="bar-group"><div class="bar" style="height:45%"></div><div class="bar-label">LOK</div></div>
-              <div class="bar-group"><div class="bar" style="height:85%"></div><div class="bar-label">MAR</div></div>
-              <div class="bar-group"><div class="bar" style="height:60%"></div><div class="bar-label">JOU</div></div>
-              <div class="bar-group"><div class="bar" style="height:30%"></div><div class="bar-label">TAM</div></div>
-              <div class="bar-group"><div class="bar" style="height:48%; background: var(--amber)"></div><div class="bar-label">HEL</div></div>
-            </div>
-          </div>
-        </div>
-
+    <!-- Ennusteet -->
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-header">
+        <div class="card-title">Ennusteet</div>
+        <div class="card-badge">2026</div>
       </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;padding:8px 0;">
+        <div>
+          <div style="font-size:0.68rem;color:var(--text3);margin-bottom:4px;">BKT-kasvu (K-P)</div>
+          <div style="font-size:1.1rem;font-weight:700;color:var(--green);">+1.2%</div>
+          <div style="font-size:0.68rem;color:var(--text3);">ETLA 2026</div>
+        </div>
+        <div>
+          <div style="font-size:0.68rem;color:var(--text3);margin-bottom:4px;">Työllisyysaste</div>
+          <div style="font-size:1.1rem;font-weight:700;color:var(--cyan);">72.4%</div>
+          <div style="font-size:0.68rem;color:var(--text3);">TEM ennuste</div>
+        </div>
+        <div>
+          <div style="font-size:0.68rem;color:var(--text3);margin-bottom:4px;">Väestöennuste 2030</div>
+          <div style="font-size:1.1rem;font-weight:700;">48 100</div>
+          <div style="font-size:0.68rem;color:var(--text3);">Tilastokeskus</div>
+        </div>
+      </div>
+      <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">
+        <div style="font-size:0.68rem;color:var(--text3);margin-bottom:6px;">Investoinnit alueelle</div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <div style="display:flex;justify-content:space-between;font-size:0.78rem;">
+            <span>Arctial (arvio)</span>
+            <span style="color:var(--green);font-weight:600;">~3 mrd €</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:0.78rem;">
+            <span>Kokkolan satama 2026</span>
+            <span style="color:var(--cyan);font-weight:600;">45 M€</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:0.78rem;">
+            <span>Kaupungin investoinnit</span>
+            <span style="font-weight:600;">22.1 M€</span>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:10px;font-size:0.65rem;color:var(--text3);">⚠️ Ennustedata päivitetään manuaalisesti — lähde: ETLA, TEM, Tilastokeskus</div>
+    </div>
 
     <!-- Bottom Grid -->
     <div class="bottom-grid">
@@ -1090,6 +1099,7 @@
           <div class="card-title">Arctial — uutiset</div>
           <a href="https://www.arctial.com/newsroom" target="_blank" style="font-size:0.72rem;color:var(--cyan);text-decoration:none;">arctial.com →</a>
         </div>
+        <input id="search-arctial" type="text" placeholder="Hae uutisia..." oninput="filterNews('arctial')" style="width:100%;padding:6px 10px;margin-bottom:8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text1);font-size:0.78rem;box-sizing:border-box;">
         <div id="news-arctial">
           <div style="padding:16px;text-align:center;color:var(--text3);font-size:0.78rem;">⏳ Ladataan...</div>
         </div>
@@ -1100,6 +1110,7 @@
         <div class="card-header">
           <div class="card-title">Kokkola — uutiset</div>
         </div>
+        <input id="search-kokkola" type="text" placeholder="Hae uutisia..." oninput="filterNews('kokkola')" style="width:100%;padding:6px 10px;margin-bottom:8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text1);font-size:0.78rem;box-sizing:border-box;">
         <div id="news-kokkola">
           <div style="padding:16px;text-align:center;color:var(--text3);font-size:0.78rem;">⏳ Ladataan...</div>
         </div>
@@ -1617,6 +1628,32 @@
     if (showMoreBtn) showMoreBtn.style.display = (!showAll && !activeQuery && visible >= 15) ? 'block' : 'none';
   }
 
+  const newsCache = {};
+
+  function filterNews(aihe) {
+    const query = (document.getElementById('search-' + aihe)?.value || '').toLowerCase().trim();
+    const el = document.getElementById('news-' + aihe);
+    if (!el || !newsCache[aihe]) return;
+    const filtered = query
+      ? newsCache[aihe].filter(item => (item.otsikko + ' ' + (item.kuvaus || '')).toLowerCase().includes(query))
+      : newsCache[aihe];
+    renderNewsItems(el, filtered);
+  }
+
+  function renderNewsItems(el, items) {
+    if (!items || items.length === 0) {
+      el.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:0.78rem;">Ei hakutuloksia</div>';
+      return;
+    }
+    el.innerHTML = items.map(item =>
+      '<a href="' + (item.url || '#') + '" target="_blank" class="news-item">' +
+        '<div class="news-title">' + item.otsikko + '</div>' +
+        (item.julkaistu ? '<div class="news-meta">' + item.julkaistu + '</div>' : '') +
+        (item.kuvaus ? '<div class="news-desc">' + item.kuvaus + '</div>' : '') +
+      '</a>'
+    ).join('');
+  }
+
   async function loadNews() {
     for (const aihe of ['arctial', 'kokkola']) {
       const el = document.getElementById('news-' + aihe);
@@ -1638,13 +1675,8 @@
           el.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:0.78rem;">Ei uutisia saatavilla</div>';
           continue;
         }
-        el.innerHTML = items.map(item =>
-          '<a href="' + (item.url || '#') + '" target="_blank" class="news-item">' +
-            '<div class="news-title">' + item.otsikko + '</div>' +
-            (item.julkaistu ? '<div class="news-meta">' + item.julkaistu + '</div>' : '') +
-            (item.kuvaus ? '<div class="news-desc">' + item.kuvaus + '</div>' : '') +
-          '</a>'
-        ).join('');
+        newsCache[aihe] = items;
+        renderNewsItems(el, items);
       } catch(e) {
         el.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:0.78rem;">Virhe ladattaessa uutisia</div>';
       }
