@@ -495,6 +495,30 @@
     white-space: nowrap;
   }
 
+  /* NEWS GRID */
+  .news-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 16px;
+  }
+  @media (max-width: 768px) { .news-grid { grid-template-columns: 1fr; } }
+  .news-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    text-decoration: none;
+    color: inherit;
+    transition: background 0.15s;
+  }
+  .news-item:last-child { border-bottom: none; }
+  .news-item:hover .news-title { color: var(--cyan); }
+  .news-title { font-size: 0.8rem; color: var(--text1); line-height: 1.4; }
+  .news-meta { font-size: 0.68rem; color: var(--text3); }
+  .news-desc { font-size: 0.72rem; color: var(--text2); margin-top: 2px; line-height: 1.3; }
+
   /* BOTTOM GRID */
   .bottom-grid {
     display: grid;
@@ -1057,6 +1081,32 @@
 
     </div>
 
+    <!-- Uutislaatikot -->
+    <div class="news-grid">
+
+      <!-- Arctial-uutiset -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Arctial — uutiset</div>
+          <a href="https://www.arctial.com/newsroom" target="_blank" style="font-size:0.72rem;color:var(--cyan);text-decoration:none;">arctial.com →</a>
+        </div>
+        <div id="news-arctial">
+          <div style="padding:16px;text-align:center;color:var(--text3);font-size:0.78rem;">⏳ Ladataan...</div>
+        </div>
+      </div>
+
+      <!-- Kokkola-uutiset -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Kokkola — uutiset</div>
+        </div>
+        <div id="news-kokkola">
+          <div style="padding:16px;text-align:center;color:var(--text3);font-size:0.78rem;">⏳ Ladataan...</div>
+        </div>
+      </div>
+
+    </div>
+
 
   </div>
 </div>
@@ -1478,6 +1528,7 @@
 
       renderAgendas('future');
       renderAgendasTop();
+      loadNews();
 
     } catch(e) {
       list.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:0.78rem;">Virhe ladattaessa kokouksia</div>';
@@ -1564,6 +1615,30 @@
     document.getElementById('search-empty').style.display = visible === 0 ? 'block' : 'none';
     const showMoreBtn = document.getElementById('show-more-btn');
     if (showMoreBtn) showMoreBtn.style.display = (!showAll && !activeQuery && visible >= 10) ? 'block' : 'none';
+  }
+
+  async function loadNews() {
+    for (const aihe of ['arctial', 'kokkola']) {
+      const el = document.getElementById('news-' + aihe);
+      if (!el) continue;
+      try {
+        const res = await fetch('https://kaupunki.onrender.com/news/' + aihe);
+        const items = await res.json();
+        if (!items || items.length === 0) {
+          el.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:0.78rem;">Ei uutisia saatavilla</div>';
+          continue;
+        }
+        el.innerHTML = items.map(item =>
+          '<a href="' + (item.url || '#') + '" target="_blank" class="news-item">' +
+            '<div class="news-title">' + item.otsikko + '</div>' +
+            (item.julkaistu ? '<div class="news-meta">' + item.julkaistu + '</div>' : '') +
+            (item.kuvaus ? '<div class="news-desc">' + item.kuvaus + '</div>' : '') +
+          '</a>'
+        ).join('');
+      } catch(e) {
+        el.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:0.78rem;">Virhe ladattaessa uutisia</div>';
+      }
+    }
   }
 
   function openModal(title, body, tag, link) {
