@@ -460,35 +460,39 @@
   }
 
   .upcoming-item {
-    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 16px;
     border-bottom: 1px solid var(--border);
-    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
     transition: background 0.15s;
   }
   .upcoming-item:last-child { border-bottom: none; }
-  .upcoming-item:hover { background: var(--bg3); }
-  .upcoming-item a { text-decoration: none; color: inherit; display: block; }
-  .upcoming-item a:hover .upcoming-title { color: var(--accent); }
+  .upcoming-item:hover { background: var(--surface2); }
+  .upcoming-item:hover .upcoming-title { color: var(--cyan); }
 
   .upcoming-date {
-    font-size: 0.65rem;
+    font-size: 0.68rem;
     color: var(--amber);
-    letter-spacing: 0.06em;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
-    margin-bottom: 4px;
+    white-space: nowrap;
+    min-width: 90px;
   }
 
   .upcoming-title {
-    font-size: 0.78rem;
-    color: var(--text);
-    line-height: 1.4;
+    font-size: 0.8rem;
+    color: var(--text1);
+    line-height: 1.3;
+    flex: 1;
   }
 
   .upcoming-body {
-    font-size: 0.65rem;
-    color: var(--text2);
-    letter-spacing: 0.04em;
-    margin-top: 4px;
+    font-size: 0.68rem;
+    color: var(--text3);
+    white-space: nowrap;
   }
 
   /* BOTTOM GRID */
@@ -732,7 +736,9 @@
     #nav-search { order: 3; width: 100%; }
     .search-input { width: 100% !important; }
 
-    /* Dashboard */
+  
+
+  /* Dashboard */
     .dashboard { padding: 16px; gap: 16px; }
 
     /* Header */
@@ -885,6 +891,24 @@
       </div>
     </div>
 
+    <!-- Tulevat kokoukset -->
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-header">
+        <div class="card-title">Kokoukset</div>
+      </div>
+      <div class="filter-row" style="margin-bottom:8px;">
+        <span class="filter-label">Suodata:</span>
+        <button class="filter-btn active" id="mkf-tulevat" onclick="setMeetingFilter('tulevat', this)">Tulevat</button>
+        <button class="filter-btn" id="mkf-menneet" onclick="setMeetingFilter('menneet', this)">Menneet</button>
+        <button class="filter-btn" id="mkf-kh" onclick="setMeetingFilter('kh', this)">Kaupunginhallitus</button>
+        <button class="filter-btn" id="mkf-all" onclick="setMeetingFilter('all', this)">Kaikki</button>
+        <input id="meeting-search" type="text" placeholder="Hae kokous..." oninput="renderAgendasTop()" style="margin-left:auto;padding:4px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text1);font-size:0.78rem;width:150px;">
+      </div>
+      <div id="upcoming-meetings-list-top">
+        <div style="padding:16px;text-align:center;color:var(--text3);font-size:0.78rem;">⏳ Ladataan...</div>
+      </div>
+    </div>
+
     <!-- Main Grid -->
     <div class="main-grid">
       <!-- Decisions -->
@@ -1032,6 +1056,7 @@
       </div>
 
     </div>
+
 
   </div>
 </div>
@@ -1320,6 +1345,53 @@
   }
 
   let allAgendaItems = [];
+  let meetingFilter = 'all';
+
+  function setMeetingFilter(filter, btn) {
+    meetingFilter = filter;
+    document.querySelectorAll('#mkf-tulevat, #mkf-menneet, #mkf-kh, #mkf-all').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderAgendasTop();
+  }
+
+  function renderAgendasTop() {
+    const list = document.getElementById('upcoming-meetings-list-top');
+    if (!list) return;
+    const now = new Date();
+
+    const searchVal = (document.getElementById('meeting-search')?.value || '').toLowerCase().trim();
+
+    let filtered = allAgendaItems.filter(item => {
+      const d = item.date ? new Date(item.date) : null;
+      const year = d ? d.getFullYear() : null;
+      if (meetingFilter === 'tulevat') { if (!((!d || d >= now))) return false; }
+      else if (meetingFilter === 'menneet') { if (!(d && d < now && year >= 2026)) return false; }
+      else if (meetingFilter === 'kh') { if (!item.title.toLowerCase().includes('kaupunginhallitus')) return false; }
+      if (searchVal && !item.title.toLowerCase().includes(searchVal)) return false;
+      return true;
+    });
+
+    // Järjestys: tulevat aika-järjestyksessä, muut uusimmat ensin
+    if (meetingFilter === 'tulevat') {
+      filtered.sort((a, b) => (a.date || '') < (b.date || '') ? -1 : 1);
+    } else {
+      filtered.sort((a, b) => (a.date || '') > (b.date || '') ? -1 : 1);
+    }
+
+    filtered = filtered.slice(0, 8);
+
+    if (filtered.length === 0) {
+      list.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:0.78rem;">Ei kokouksia</div>';
+      return;
+    }
+    list.innerHTML = filtered.map(item =>
+      '<a href="' + item.link + '" target="_blank" class="upcoming-item">' +
+        (item.dateStr ? '<div class="upcoming-date">' + item.dateStr + '</div>' : '') +
+        '<div class="upcoming-title">' + item.title + '</div>' +
+        '<div class="upcoming-body">Avaa esityslista →</div>' +
+      '</a>'
+    ).join('');
+  }
 
   function switchMeetingTab(tab, btn) {
     document.querySelectorAll('.meeting-tab').forEach(b => b.classList.remove('active'));
@@ -1405,6 +1477,7 @@
       });
 
       renderAgendas('future');
+      renderAgendasTop();
 
     } catch(e) {
       list.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:0.78rem;">Virhe ladattaessa kokouksia</div>';
