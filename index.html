@@ -1,1 +1,271 @@
-<!DOCTYPE html>\n<html lang="en">\n<head>\n    <meta charset="UTF-8">\n    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n    <title>PäätösTutka Dashboard</title>\n    <link rel="stylesheet" href="styles.css">\n</head>\n<body>\n    <header>\n        <h1>PäätösTutka Dashboard</h1>\n    </header>\n    <main>\n        <section id="dashboard">\n            <h2>Dashboard</h2>\n            <div id="data-section">\n                <!-- Data will be displayed here -->\n            </div>\n            <button id="load-data">Load Data</button>\n        </section>\n    </main>\n    <footer>\n        <p>&copy; 2026 PäätösTutka</p>\n    </footer>\n    <script src="script.js"></script>\n</body>\n</html>\n
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="PäätösTutka — Seuraa Kokkolan kaupungin päätöksentekoa reaaliajassa.">
+  <meta name="theme-color" content="#0a0c0f">
+  <meta name="robots" content="index, follow">
+  <meta property="og:title" content="PäätösTutka — Kokkola">
+  <meta property="og:description" content="Parempia päätöksiä datalla tuettuna">
+  <meta property="og:type" content="website">
+  <title>PäätösTutka — Kokkola</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- NAV -->
+<nav role="navigation" aria-label="Päänavigaatio">
+  <div class="nav-logo">Päätös<span class="accent">Tutka</span></div>
+  <div class="search-wrap" id="nav-search" style="display:none">
+    <span class="search-icon" aria-hidden="true">🔍</span>
+    <input class="search-input" id="searchInput" type="search" placeholder="Hae päätöksiä..." maxlength="100" aria-label="Hae päätöksiä">
+    <button class="search-clear" id="searchClear" aria-label="Tyhjennä haku" style="display:none">✕</button>
+  </div>
+  <div class="nav-links">
+    <button class="nav-btn active" data-view="landing">Etusivu</button>
+    <button class="nav-btn" data-view="dashboard">Dashboard</button>
+    <button class="nav-btn cta" data-view="dashboard">Kirjaudu sisään →</button>
+  </div>
+</nav>
+
+<!-- LANDING VIEW -->
+<div class="view active" id="view-landing">
+  <div class="landing">
+    <div class="hero">
+      <div class="hero-tag">🟢 Paikallinen demokratia</div>
+      <h1>Parempia päätöksiä<br><em>datalla tuettuna.</em></h1>
+      <p>Seuraa kaupunkisi päätöksentekoa reaaliajassa. Tulevat kokoukset, tärkeät äänestykset ja tuoreimmat tilastotiedot — yhdessä paikassa.</p>
+      <div class="hero-cta">
+        <button class="btn-primary" data-view="dashboard">Avaa dashboard →</button>
+        <button class="btn-secondary">Lue lisää</button>
+      </div>
+    </div>
+    <div class="features">
+      <article class="feature">
+        <div class="feature-icon" aria-hidden="true">🏛️</div>
+        <h3>Päätökset & kokoukset</h3>
+        <p>Tulevat valtuuston kokoukset, äänestystulokset ja päätösten historiatiedot helposti selattavissa.</p>
+      </article>
+      <article class="feature">
+        <div class="feature-icon" aria-hidden="true">📊</div>
+        <h3>Talous & tilastot</h3>
+        <p>Kunnan taloustilanne, budjetin toteutuminen, väestökehitys ja työttömyystilastot päivitettynä.</p>
+      </article>
+      <article class="feature">
+        <div class="feature-icon" aria-hidden="true">🔔</div>
+        <h3>Ilmoitukset</h3>
+        <p>Saat ilmoituksen kun seuraamiisi aiheisiin liittyviä päätöksiä on tulossa tai tehty.</p>
+      </article>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD VIEW -->
+<div class="view" id="view-dashboard">
+  <div class="dashboard">
+
+    <!-- Header -->
+    <header class="dash-header">
+      <div>
+        <div class="dash-title">
+          <span>PäätösTutka</span>
+          <span style="font-size:1rem;font-weight:600;color:var(--cyan);display:block;margin-top:3px;">Kokkola</span>
+          <span style="font-size:0.72rem;font-weight:400;opacity:0.6;display:block;">Päätökset ja kokousasiat</span>
+        </div>
+      </div>
+      <div class="dash-date" id="dash-date" role="time"></div>
+    </header>
+
+    <!-- Stats -->
+    <section class="stats-row" aria-label="Tilastot">
+      <div class="stat-card" style="--accent-color:#06b6d4">
+        <div class="stat-label">Asukasluku</div>
+        <div class="stat-value" id="stat-vaesto">⏳</div>
+        <div class="stat-change neutral" id="stat-vaesto-change">ladataan...</div>
+      </div>
+      <div class="stat-card" style="--accent-color:#ef4444">
+        <div class="stat-label">Työttömyys</div>
+        <div class="stat-value" id="stat-tyottomyys">⏳</div>
+        <div class="stat-change neutral" id="stat-tyottomyys-change">ladataan...</div>
+      </div>
+      <div class="stat-card" style="--accent-color:#22c55e">
+        <div class="stat-label">Alle 18-vuotiaat</div>
+        <div class="stat-value" id="stat-nuoret">⏳</div>
+        <div class="stat-change neutral" id="stat-nuoret-change">ladataan...</div>
+      </div>
+      <div class="stat-card" style="--accent-color:#f59e0b">
+        <div class="stat-label">Tulevia päätöksiä</div>
+        <div class="stat-value" id="stat-paatokset">—</div>
+        <div class="stat-change neutral">seuraavat 30 pv</div>
+      </div>
+    </section>
+
+    <!-- Kokoukset -->
+    <section class="card" aria-labelledby="meetings-title">
+      <div class="card-header">
+        <h2 class="card-title" id="meetings-title">Kokoukset</h2>
+      </div>
+      <div class="filter-row" role="toolbar" aria-label="Kokoussuodattimet">
+        <span class="filter-label">Suodata:</span>
+        <button class="filter-btn active" data-mfilter="tulevat">Tulevat</button>
+        <button class="filter-btn" data-mfilter="menneet">Menneet</button>
+        <button class="filter-btn" data-mfilter="kh">Kaupunginhallitus</button>
+        <button class="filter-btn" data-mfilter="all">Kaikki</button>
+        <input id="meeting-search" type="search" placeholder="Hae kokous..." aria-label="Hae kokouksia" style="margin-left:auto;padding:4px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text1);font-size:0.78rem;width:150px;">
+      </div>
+      <div id="upcoming-meetings-list-top" role="feed" aria-label="Kokousluettelo">
+        <div style="padding:16px;text-align:center;color:var(--text3);font-size:0.78rem;">⏳ Ladataan...</div>
+      </div>
+    </section>
+
+    <!-- Päätökset -->
+    <section class="card main-grid" aria-labelledby="decisions-title">
+      <div class="card-header">
+        <h2 class="card-title" id="decisions-title">Viimeisimmät & tulevat päätökset</h2>
+        <span class="card-badge" id="decisions-count">0 kpl</span>
+      </div>
+      <div class="filter-row" role="toolbar" aria-label="Päätössuodattimet">
+        <span class="filter-label">Suodata:</span>
+        <button class="filter-btn active" data-dfilter="all">Kaikki</button>
+        <button class="filter-btn f-passed"  data-dfilter="viranomais">Viranomaispäätökset</button>
+        <button class="filter-btn f-review"  data-dfilter="paatokset">Tehdyt päätökset</button>
+        <button class="filter-btn f-upcoming" data-dfilter="esitykset">Esitykset</button>
+      </div>
+      <div id="decisions-list" role="feed" aria-label="Päätösluettelo">
+        <div style="padding:32px 24px;text-align:center;color:var(--text3);font-size:0.8rem;">⏳ Ladataan päätöksiä...</div>
+      </div>
+      <button id="show-more-btn" style="display:none;width:100%;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:0 0 12px 12px;color:var(--text2);cursor:pointer;font-size:0.85rem;border-top:1px solid var(--border);">
+        Näytä kaikki päätökset ▼
+      </button>
+      <div class="search-empty" id="decisions-empty" role="status">
+        <div class="search-empty-icon" aria-hidden="true">🔍</div>
+        <div class="search-empty-text">Ei hakutuloksia</div>
+      </div>
+    </section>
+
+    <!-- Ennusteet -->
+    <section class="card" aria-labelledby="ennusteet-title">
+      <div class="card-header">
+        <h2 class="card-title" id="ennusteet-title">Ennusteet</h2>
+        <span class="card-badge">2026</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;padding:16px 24px;">
+        <div>
+          <div style="font-size:0.68rem;color:var(--text3);margin-bottom:4px;">BKT-kasvu (K-P)</div>
+          <div style="font-size:1.1rem;font-weight:700;color:var(--green);">+1.2%</div>
+          <div style="font-size:0.68rem;color:var(--text3);">ETLA 2026</div>
+        </div>
+        <div>
+          <div style="font-size:0.68rem;color:var(--text3);margin-bottom:4px;">Työllisyysaste</div>
+          <div style="font-size:1.1rem;font-weight:700;color:var(--cyan);">72.4%</div>
+          <div style="font-size:0.68rem;color:var(--text3);">TEM ennuste</div>
+        </div>
+        <div>
+          <div style="font-size:0.68rem;color:var(--text3);margin-bottom:4px;">Väestöennuste 2030</div>
+          <div style="font-size:1.1rem;font-weight:700;">48 100</div>
+          <div style="font-size:0.68rem;color:var(--text3);">Tilastokeskus</div>
+        </div>
+      </div>
+      <div style="padding:0 24px 16px;">
+        <div style="border-top:1px solid var(--border);padding-top:12px;">
+          <div style="font-size:0.68rem;color:var(--text3);margin-bottom:8px;">Investoinnit alueelle</div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <div style="display:flex;justify-content:space-between;font-size:0.78rem;gap:12px;">
+              <span style="flex:1;min-width:0;">Arctial (arvio)</span>
+              <span style="color:var(--green);font-weight:600;white-space:nowrap;">~3 mrd €</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:0.78rem;gap:12px;">
+              <span style="flex:1;min-width:0;">Kokkolan satama 2026</span>
+              <span style="color:var(--cyan);font-weight:600;white-space:nowrap;">45 M€</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:0.78rem;gap:12px;">
+              <span style="flex:1;min-width:0;">Kaupungin investoinnit</span>
+              <span style="font-weight:600;white-space:nowrap;">22.1 M€</span>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:10px;font-size:0.65rem;color:var(--text3);">⚠️ Ennustedata päivitetään manuaalisesti — lähde: ETLA, TEM, Tilastokeskus</div>
+      </div>
+    </section>
+
+    <!-- Talous, väestö, työllisyys -->
+    <div class="bottom-grid">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Taloustilanne</div>
+          <span class="card-badge">2026</span>
+        </div>
+        <div class="trend-row"><span class="trend-label">Vuosikate</span><span class="trend-value" style="color:var(--green)">+8,4 M€</span></div>
+        <div class="trend-row"><span class="trend-label">Lainakanta / asukas</span><span class="trend-value">3 842 €</span></div>
+        <div class="trend-row"><span class="trend-label">Toimintakate</span><span class="trend-value" style="color:var(--red)">−122 M€</span></div>
+        <div class="trend-row"><span class="trend-label">Investointibudjetti</span><span class="trend-value">22,1 M€</span></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Väestökehitys</div></div>
+        <div class="trend-bar-container">
+          <div class="trend-bar-row"><div class="trend-bar-info"><span>0–17 v</span><span>19.2%</span></div><div class="trend-bar-track"><div class="trend-bar-fill" style="width:19.2%;background:var(--cyan)"></div></div></div>
+          <div class="trend-bar-row"><div class="trend-bar-info"><span>18–64 v</span><span>57.4%</span></div><div class="trend-bar-track"><div class="trend-bar-fill" style="width:57.4%;background:var(--accent)"></div></div></div>
+          <div class="trend-bar-row"><div class="trend-bar-info"><span>65+ v</span><span>23.4%</span></div><div class="trend-bar-track"><div class="trend-bar-fill" style="width:23.4%;background:var(--amber)"></div></div></div>
+          <div class="trend-bar-row"><div class="trend-bar-info"><span>Syntyvyys (‰)</span><span>7.2 ‰</span></div><div class="trend-bar-track"><div class="trend-bar-fill" style="width:36%;background:var(--green)"></div></div></div>
+          <div class="trend-bar-row"><div class="trend-bar-info"><span>Nettomuutto</span><span>−124 hlö</span></div><div class="trend-bar-track"><div class="trend-bar-fill" style="width:62%;background:var(--red)"></div></div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Työllisyys</div></div>
+        <div class="trend-row"><span class="trend-label">Työttömyysaste</span><span class="trend-value" style="color:var(--amber)">9.2%</span></div>
+        <div class="trend-row"><span class="trend-label">Nuorisotyöttömyys</span><span class="trend-value" style="color:var(--red)">14.8%</span></div>
+        <div class="trend-row"><span class="trend-label">Pitkäaikaistyöttömät</span><span class="trend-value">682 hlö</span></div>
+        <div class="trend-row"><span class="trend-label">Avoimet työpaikat</span><span class="trend-value" style="color:var(--green)">341</span></div>
+      </div>
+    </div>
+
+    <!-- Uutiset -->
+    <div class="news-grid">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Arctial — uutiset</div>
+          <a href="https://www.arctial.com/newsroom" target="_blank" style="font-size:0.72rem;color:var(--cyan);text-decoration:none;">arctial.com →</a>
+        </div>
+        <div style="padding:8px 16px 0;">
+          <input id="search-arctial" type="search" placeholder="Hae uutisia..." aria-label="Hae Arctial-uutisia" style="width:100%;padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text1);font-size:0.78rem;box-sizing:border-box;">
+        </div>
+        <div id="news-arctial" style="padding:0 16px;">
+          <div style="padding:16px 0;color:var(--text3);font-size:0.78rem;">⏳ Ladataan...</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Kokkola — uutiset</div>
+        </div>
+        <div style="padding:8px 16px 0;">
+          <input id="search-kokkola" type="search" placeholder="Hae uutisia..." aria-label="Hae Kokkola-uutisia" style="width:100%;padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text1);font-size:0.78rem;box-sizing:border-box;">
+        </div>
+        <div id="news-kokkola" style="padding:0 16px;">
+          <div style="padding:16px 0;color:var(--text3);font-size:0.78rem;">⏳ Ladataan...</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-hidden="true">
+  <div class="modal">
+    <div class="modal-tag" id="modal-tag"></div>
+    <h2 class="modal-title" id="modal-title"></h2>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn-primary">Avaa täydet tiedot →</button>
+      <button class="modal-close" id="modal-close">Sulje</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js" defer></script>
+</body>
+</html>
