@@ -6,8 +6,6 @@ const PROXY_BASE        = 'https://kaupunki.onrender.com';
 const PROXY_DECISIONS   = PROXY_BASE + '/decisions';
 const PROXY_MEETINGS    = PROXY_BASE + '/meetings';
 const PROXY_AGENDAS     = PROXY_BASE + '/agendas';
-const STAT_VAESTO_URL   = 'https://pxdata.stat.fi/PxWeb/api/v1/fi/StatFin/vaerak/statfin_vaerak_pxt_11ra.px';
-const STAT_TYO_URL      = 'https://pxdata.stat.fi/PxWeb/api/v1/fi/StatFin/tyonv/statfin_tyonv_pxt_12tf.px';
 
 // ============================================================
 // STATE
@@ -27,10 +25,9 @@ const newsCache     = {};
 function showView(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-' + name).classList.add('active');
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-
-  const navBtns = document.querySelectorAll('.nav-btn[data-view]');
-  navBtns.forEach(b => { if (b.dataset.view === name) b.classList.add('active'); });
+  document.querySelectorAll('.nav-btn[data-view]').forEach(b => {
+    b.classList.toggle('active', b.dataset.view === name);
+  });
 
   document.getElementById('nav-search').style.display = name === 'dashboard' ? 'flex' : 'none';
 
@@ -43,96 +40,47 @@ function showView(name) {
 }
 
 // ============================================================
-// STATISTICS — Tilastokeskus PxWeb API
+// STATISTICS
 // ============================================================
 
-async function fetchStat(url, body) {
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
-  const data = await res.json();
-  return parseFloat(data.data[0]?.values[0]);
-}
-
 async function loadStats() {
-  // Väestö ja alle 18-v
-  const statDefs = [
-    { tiedot: 'vaesto',          elValue: 'stat-vaesto',    elChange: 'stat-vaesto-change',  format: v => Math.round(v).toLocaleString('fi-FI'), unit: 'hlö' },
-    { tiedot: 'vaesto_alle15_p', elValue: 'stat-nuoret',    elChange: 'stat-nuoret-change',  format: v => v.toFixed(1) + '%',                    unit: '%'   },
-  ];
-
-  for (const s of statDefs) {
-    try {
-      const makeBody = (vuosi) => ({
-        query: [
-          { code: 'Alue',   selection: { filter: 'item', values: ['KU272'] } },
-          { code: 'Tiedot', selection: { filter: 'item', values: [s.tiedot] } },
-          { code: 'Vuosi',  selection: { filter: 'item', values: [vuosi] } }
-        ],
-        response: { format: 'json' }
-      });
-
-      const [v2024, v2023] = await Promise.all([
-        fetchStat(STAT_VAESTO_URL, makeBody('2024')),
-        fetchStat(STAT_VAESTO_URL, makeBody('2023'))
-      ]);
-
-      document.getElementById(s.elValue).textContent = s.format(v2024);
-
-      const diff = v2024 - v2023;
-      const sign = diff >= 0 ? '+' : '';
-      const changeEl = document.getElementById(s.elChange);
-      changeEl.textContent = sign + (s.unit === '%'
-        ? diff.toFixed(1) + '% (2024 vs 2023)'
-        : Math.round(diff).toLocaleString('fi-FI') + ' hlö (2024 vs 2023)');
-      changeEl.className = 'stat-change ' + (diff > 0 ? 'up' : diff < 0 ? 'down' : 'neutral');
-    } catch (e) {
-      document.getElementById(s.elValue).textContent = '–';
-      document.getElementById(s.elChange).textContent = 'virhe';
-    }
-  }
-
-  // Työttömyysaste
   try {
-    const metaRes = await fetch(STAT_TYO_URL);
-    const meta    = await metaRes.json();
-    const kuukaudet   = meta.variables.find(v => v.code === 'Kuukausi').values;
-    const uusinKk     = kuukaudet[kuukaudet.length - 1];
-    const edellinenKk = kuukaudet[kuukaudet.length - 13];
+    const res  = await fetch(PROXY_BASE + '/stats');
+    const data = await res.json();
 
-    const tyoBody = {
-      query: [
-        { code: 'Alue',     selection: { filter: 'item', values: ['KU272'] } },
-        { code: 'Kuukausi', selection: { filter: 'item', values: [uusinKk, edellinenKk] } },
-        { code: 'Tiedot',   selection: { filter: 'item', values: ['TYOTOSUUS'] } }
-      ],
-      response: { format: 'json' }
-    };
+    // Väestö
+    if (!isNaN(data.vaesto)) {
+      document.getElementById('stat-vaesto').textContent = Math.round(data.vaesto).toLocaleString('fi-FI');
+      const diff = data.vaesto - data.vaestoPrev;
+      const sign = diff >= 0 ? '+' : '';
+      const el = document.getElementById('stat-vaesto-change');
+      el.textContent = sign + Math.round(diff).toLocaleString('fi-FI') + ' hlö (2024 vs 2023)';
+      el.className = 'stat-change ' + (diff > 0 ? 'up' : diff < 0 ? 'down' : 'neutral');
+    }
 
-    const tyoRes  = await fetch(STAT_TYO_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(tyoBody) });
-    const tyoData = await tyoRes.json();
+    // Alle 18-v
+    if (!isNaN(data.nuoret)) {
+      document.getElementById('stat-nuoret').textContent = data.nuoret.toFixed(1) + '%';
+      const diff = data.nuoret - data.nuoretPrev;
+      const sign = diff >= 0 ? '+' : '';
+      const el = document.getElementById('stat-nuoret-change');
+      el.textContent = sign + diff.toFixed(1) + '% (2024 vs 2023)';
+      el.className = 'stat-change ' + (diff > 0 ? 'up' : diff < 0 ? 'down' : 'neutral');
+    }
 
-    const uusinArvo     = parseFloat(tyoData.data[0]?.values[0]);
-    const edellinenArvo = parseFloat(tyoData.data[1]?.values[0]);
-
-    if (!isNaN(uusinArvo)) {
-      document.getElementById('stat-tyottomyys').textContent = uusinArvo.toFixed(1) + '%';
-      const kkLabel = uusinKk.replace('M', '/');
-      if (!isNaN(edellinenArvo)) {
-        const diff = uusinArvo - edellinenArvo;
-        const sign = diff >= 0 ? '+' : '';
-        const changeEl = document.getElementById('stat-tyottomyys-change');
-        changeEl.textContent = sign + diff.toFixed(1) + '% vs vuosi sitten (' + kkLabel + ')';
-        changeEl.className = 'stat-change ' + (diff > 0 ? 'up' : diff < 0 ? 'down' : 'neutral');
-      } else {
-        document.getElementById('stat-tyottomyys-change').textContent = kkLabel;
-      }
+    // Työttömyys
+    if (!isNaN(data.tyottomyys)) {
+      document.getElementById('stat-tyottomyys').textContent = data.tyottomyys.toFixed(1) + '%';
+      const diff = data.tyottomyys - data.tyottomyysPrev;
+      const sign = diff >= 0 ? '+' : '';
+      const el = document.getElementById('stat-tyottomyys-change');
+      el.textContent = sign + diff.toFixed(1) + '% vs vuosi sitten (' + (data.tyottomyysKk || '') + ')';
+      el.className = 'stat-change ' + (diff > 0 ? 'up' : diff < 0 ? 'down' : 'neutral');
     }
   } catch (e) {
-    document.getElementById('stat-tyottomyys').textContent = '–';
-    document.getElementById('stat-tyottomyys-change').textContent = 'ei dataa';
+    ['stat-vaesto', 'stat-nuoret', 'stat-tyottomyys'].forEach(id => {
+      document.getElementById(id).textContent = '–';
+    });
   }
 }
 
@@ -222,7 +170,7 @@ async function loadMeetings() {
     items.forEach(item => {
       const getTag = tag => {
         const el = item.querySelector(tag);
-        return el ? (el.textContent || el.innerHTML || '').replace(/<!\\[CDATA\\[|\\]\\]>/g, '').trim() : '';
+        return el ? (el.textContent || el.innerHTML || '').replace(/<!\[CDATA\[|\]\]>/g, '').trim() : '';
       };
       const title   = getTag('title') || '–';
       const desc    = getTag('description') || '';
@@ -544,8 +492,8 @@ document.addEventListener('DOMContentLoaded', () => {
     dateEl.textContent = now.toLocaleDateString('fi-FI', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   }
 
-  // Nav buttons (data-view)
-  document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
+  // Kaikki data-view napit (nav + hero CTA)
+  document.querySelectorAll('[data-view]').forEach(btn => {
     btn.addEventListener('click', () => showView(btn.dataset.view));
   });
 
