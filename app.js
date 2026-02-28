@@ -17,6 +17,8 @@ let activeQuery     = '';
 let allAgendaItems  = [];
 let meetingFilter   = 'tulevat';
 const newsCache     = {};
+const NEWS_LIMIT    = 10;
+const visibleNews   = { arctial: NEWS_LIMIT, kokkola: NEWS_LIMIT };
 
 // ============================================================
 // VIEW NAVIGATION
@@ -404,24 +406,82 @@ function filterNews(aihe) {
   const query = (document.getElementById('search-' + aihe)?.value || '').toLowerCase().trim();
   const el    = document.getElementById('news-' + aihe);
   if (!el || !newsCache[aihe]) return;
-  const filtered = query
-    ? newsCache[aihe].filter(item => (item.otsikko + ' ' + (item.kuvaus || '')).toLowerCase().includes(query))
-    : newsCache[aihe];
-  renderNewsItems(el, filtered);
+  if (query) {
+    const filtered = newsCache[aihe].filter(item =>
+      (item.otsikko + ' ' + (item.kuvaus || '')).toLowerCase().includes(query)
+    );
+    renderNewsItems(el, filtered, aihe, true);
+  } else {
+    renderNewsItems(el, newsCache[aihe], aihe, false);
+  }
 }
 
-function renderNewsItems(el, items) {
+function renderNewsItems(el, items, aihe, isSearch) {
   if (!items || !items.length) {
-    el.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:0.78rem;">Ei hakutuloksia</div>';
+    el.innerHTML = '<div style="padding:16px 0;color:var(--text3);font-size:0.78rem;">Ei hakutuloksia</div>';
     return;
   }
-  el.innerHTML = items.map(item =>
+  const limit   = (isSearch || !aihe) ? items.length : (visibleNews[aihe] || NEWS_LIMIT);
+  const visible = items.slice(0, limit);
+  const rest    = items.length - visible.length;
+
+  let html = visible.map(item =>
     '<a href="' + (item.url || '#') + '" target="_blank" class="news-item">' +
       '<div class="news-title">' + item.otsikko + '</div>' +
       (item.julkaistu ? '<div class="news-meta">' + item.julkaistu + '</div>' : '') +
       (item.kuvaus    ? '<div class="news-desc">'  + item.kuvaus    + '</div>' : '') +
     '</a>'
   ).join('');
+
+  if (!isSearch && rest > 0) {
+    html += '<button class="news-load-more" onclick="showMoreNews(\'' + aihe + '\')">' +
+              '+ Näytä lisää (' + rest + ' uutista)' +
+            '</button>';
+  } else if (!isSearch && items.length > NEWS_LIMIT && limit >= items.length) {
+    html += '<button class="news-load-more news-load-less" onclick="showLessNews(\'' + aihe + '\')">' +
+              '↑ Näytä vähemmän' +
+            '</button>';
+  }
+
+  el.innerHTML = html;
+}
+
+function showMoreNews(aihe) {
+  visibleNews[aihe] = (visibleNews[aihe] || NEWS_LIMIT) + NEWS_LIMIT;
+  // Jos näytetään enemmän kuin cachessa on, haetaan lisää backendistä
+  const cached = newsCache[aihe] || [];
+  if (visibleNews[aihe] > cached.length) {
+    fetchMoreNews(aihe, visibleNews[aihe]);
+  } else {
+    renderNewsItems(document.getElementById('news-' + aihe), cached, aihe, false);
+  }
+}
+
+async function fetchMoreNews(aihe, limit) {
+  try {
+    const res   = await fetch(PROXY_BASE + '/news/' + aihe + '?limit=' + limit);
+    let items   = await res.json();
+    items.sort((a, b) => {
+      const parse = s => {
+        if (!s) return 0;
+        const m = s.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+        if (m) return new Date(m[3], m[2] - 1, m[1]).getTime();
+        return new Date(s).getTime() || 0;
+      };
+      return parse(b.julkaistu) - parse(a.julkaistu);
+    });
+    newsCache[aihe] = items;
+    renderNewsItems(document.getElementById('news-' + aihe), items, aihe, false);
+  } catch (e) {
+    console.error('Virhe ladattaessa lisää uutisia:', e);
+  }
+}
+
+function showLessNews(aihe) {
+  visibleNews[aihe] = NEWS_LIMIT;
+  const el = document.getElementById('news-' + aihe);
+  renderNewsItems(el, newsCache[aihe], aihe, false);
+  el.closest('.card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 async function loadNews() {
@@ -448,7 +508,7 @@ async function loadNews() {
         continue;
       }
       newsCache[aihe] = items;
-      renderNewsItems(el, items);
+      renderNewsItems(el, items, aihe, false);
     } catch (e) {
       el.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:0.78rem;">Virhe ladattaessa uutisia</div>';
     }
