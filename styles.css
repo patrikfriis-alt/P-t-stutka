@@ -551,35 +551,46 @@ nav {
 .news-meta  { font-size: 0.68rem; color: var(--text3); }
 .news-desc  { font-size: 0.72rem; color: var(--text2); margin-top: 2px; line-height: 1.3; }
 
-.news-load-more {
-  display: block;
-  width: 100%;
-  margin: 8px 0 4px;
-  padding: 9px 16px;
-  background: transparent;
-  color: var(--accent);
-  border: 1px solid var(--border2);
-  border-radius: 6px;
-  font-family: 'DM Mono', monospace;
-  font-size: 0.72rem;
-  letter-spacing: 0.03em;
-  cursor: pointer;
-  text-align: center;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+/* ============================================================
+   TALOUSDATA
+   ============================================================ */
+.talous-item {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
 }
-.news-load-more:hover {
-  background: rgba(59,130,246,0.08);
-  border-color: var(--accent);
+.talous-item:last-child { border-bottom: none; }
+.talous-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
 }
-.news-load-less {
+.talous-tyyppi {
+  font-size: 0.75rem;
+  font-family: 'Syne', sans-serif;
+  font-weight: 600;
+  color: var(--text1);
+}
+.talous-id { font-size: 0.65rem; color: var(--text3); letter-spacing: 0.03em; }
+.talous-section-label {
+  font-size: 0.62rem;
   color: var(--text3);
-  border-color: var(--border);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 6px 0 4px;
 }
-.news-load-less:hover {
-  background: var(--bg3);
-  border-color: var(--border2);
-  color: var(--text2);
+.talous-summat { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.talous-summa {
+  background: rgba(34,197,94,0.1);
+  border: 1px solid rgba(34,197,94,0.25);
+  color: var(--green);
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: 'Syne', sans-serif;
+  font-weight: 600;
 }
+.talous-osastot { font-size: 0.72rem; color: var(--text2); line-height: 1.6; }
 
 /* ============================================================
    BOTTOM GRID & TRENDS
