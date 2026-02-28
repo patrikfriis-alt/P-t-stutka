@@ -17,8 +17,6 @@ let activeQuery     = '';
 let allAgendaItems  = [];
 let meetingFilter   = 'tulevat';
 const newsCache     = {};
-const NEWS_LIMIT    = 10;
-const visibleNews   = { arctial: NEWS_LIMIT, kokkola: NEWS_LIMIT };
 
 // ============================================================
 // VIEW NAVIGATION
@@ -38,6 +36,7 @@ function showView(name) {
     loadStats();
     loadMeetings();
     loadAgendas();
+    loadTalousdata();
   }
 }
 
@@ -399,89 +398,152 @@ function applyFilters() {
 }
 
 // ============================================================
-// NEWS
+// TALOUSDATA
 // ============================================================
+
+async function loadTalousdata() {
+  const el = document.getElementById('talousdata-list');
+  if (!el) return;
+
+  try {
+    const res   = await fetch(PROXY_BASE + '/talousdata');
+    const items = await res.json();
+
+    if (!items || !items.length) {
+      el.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:0.78rem;">Ei talousdataa saatavilla — PDF-parsinta käynnissä automaattisesti.</div>';
+      return;
+    }
+
+    // Ryhmitellään kokous_pvm mukaan, uusin ensin
+    const byMeeting = {};
+    items.forEach(item => {
+      const key = item.kokous_pvm || 'tuntematon';
+      if (!byMeeting[key]) byMeeting[key] = [];
+      byMeeting[key].push(item);
+    });
+
+    const sorted = Object.entries(byMeeting).sort(([a], [b]) => b.localeCompare(a));
+    const latest = sorted[0];
+    const [pvm, kokousItems] = latest;
+
+    // Päivitä viimeisin kokous -badge
+    const badge = document.getElementById('talousdata-badge');
+    if (badge && pvm !== 'tuntematon') {
+      const d = new Date(pvm);
+      badge.textContent = d.toLocaleDateString('fi-FI', { day: 'numeric', month: 'numeric', year: 'numeric' });
+    }
+
+    let html = '';
+
+    kokousItems.forEach(item => {
+      let data = {};
+      try { data = typeof item.data === 'string' ? JSON.parse(item.data) : item.data; } catch (e) {}
+
+      const tyyppiLabel = {
+        budjetti: '💰 Budjetti', palkka: '👤 Palkka',
+        sopimus: '📄 Sopimus', investointi: '🏗️ Investointi'
+      }[item.raportti_tyyppi] || '📋 ' + (item.raportti_tyyppi || 'Muu');
+
+      html += '<div class="talous-item">';
+      html += '<div class="talous-item-header"><span class="talous-tyyppi">' + tyyppiLabel + '</span><span class="talous-id">' + (item.kokous_id || '') + '</span></div>';
+
+      // Summat
+      if (data.summat && data.summat.length) {
+        html += '<div class="talous-section-label">Summat</div>';
+        html += '<div class="talous-summat">';
+        data.summat.forEach(s => {
+          html += '<span class="talous-summa">' + s + '</span>';
+        });
+        html += '</div>';
+      }
+
+      // Osastot
+      if (data.osastot && data.osastot.length) {
+        html += '<div class="talous-section-label">Osastot</div>';
+        html += '<div class="talous-osastot">' + data.osastot.join(' · ') + '</div>';
+      }
+
+      html += '</div>';
+    });
+
+    el.innerHTML = html;
+
+    // Täytä kokousvalikko
+    const select = document.getElementById('talousdata-select');
+    if (select) {
+      select.innerHTML = sorted.map(([pvm]) => {
+        const d = new Date(pvm);
+        const label = pvm === 'tuntematon' ? 'Tuntematon' : d.toLocaleDateString('fi-FI', { day: 'numeric', month: 'numeric', year: 'numeric' });
+        return '<option value="' + pvm + '">' + label + '</option>';
+      }).join('');
+      select.addEventListener('change', () => renderTalousdataMeeting(byMeeting, select.value, el));
+    }
+
+  } catch (e) {
+    el.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:0.78rem;">Virhe ladattaessa talousdataa.</div>';
+  }
+}
+
+function renderTalousdataMeeting(byMeeting, pvm, el) {
+  const badge = document.getElementById('talousdata-badge');
+  if (badge && pvm !== 'tuntematon') {
+    const d = new Date(pvm);
+    badge.textContent = d.toLocaleDateString('fi-FI', { day: 'numeric', month: 'numeric', year: 'numeric' });
+  }
+
+  const kokousItems = byMeeting[pvm] || [];
+  if (!kokousItems.length) { el.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:0.78rem;">Ei dataa.</div>'; return; }
+
+  let html = '';
+  kokousItems.forEach(item => {
+    let data = {};
+    try { data = typeof item.data === 'string' ? JSON.parse(item.data) : item.data; } catch (e) {}
+
+    const tyyppiLabel = {
+      budjetti: '💰 Budjetti', palkka: '👤 Palkka',
+      sopimus: '📄 Sopimus', investointi: '🏗️ Investointi'
+    }[item.raportti_tyyppi] || '📋 ' + (item.raportti_tyyppi || 'Muu');
+
+    html += '<div class="talous-item">';
+    html += '<div class="talous-item-header"><span class="talous-tyyppi">' + tyyppiLabel + '</span><span class="talous-id">' + (item.kokous_id || '') + '</span></div>';
+    if (data.summat && data.summat.length) {
+      html += '<div class="talous-section-label">Summat</div><div class="talous-summat">';
+      data.summat.forEach(s => { html += '<span class="talous-summa">' + s + '</span>'; });
+      html += '</div>';
+    }
+    if (data.osastot && data.osastot.length) {
+      html += '<div class="talous-section-label">Osastot</div>';
+      html += '<div class="talous-osastot">' + data.osastot.join(' · ') + '</div>';
+    }
+    html += '</div>';
+  });
+  el.innerHTML = html;
+}
+
+
 
 function filterNews(aihe) {
   const query = (document.getElementById('search-' + aihe)?.value || '').toLowerCase().trim();
   const el    = document.getElementById('news-' + aihe);
   if (!el || !newsCache[aihe]) return;
-  if (query) {
-    const filtered = newsCache[aihe].filter(item =>
-      (item.otsikko + ' ' + (item.kuvaus || '')).toLowerCase().includes(query)
-    );
-    renderNewsItems(el, filtered, aihe, true);
-  } else {
-    renderNewsItems(el, newsCache[aihe], aihe, false);
-  }
+  const filtered = query
+    ? newsCache[aihe].filter(item => (item.otsikko + ' ' + (item.kuvaus || '')).toLowerCase().includes(query))
+    : newsCache[aihe];
+  renderNewsItems(el, filtered);
 }
 
-function renderNewsItems(el, items, aihe, isSearch) {
+function renderNewsItems(el, items) {
   if (!items || !items.length) {
-    el.innerHTML = '<div style="padding:16px 0;color:var(--text3);font-size:0.78rem;">Ei hakutuloksia</div>';
+    el.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:0.78rem;">Ei hakutuloksia</div>';
     return;
   }
-  const limit   = (isSearch || !aihe) ? items.length : (visibleNews[aihe] || NEWS_LIMIT);
-  const visible = items.slice(0, limit);
-  const rest    = items.length - visible.length;
-
-  let html = visible.map(item =>
+  el.innerHTML = items.map(item =>
     '<a href="' + (item.url || '#') + '" target="_blank" class="news-item">' +
       '<div class="news-title">' + item.otsikko + '</div>' +
       (item.julkaistu ? '<div class="news-meta">' + item.julkaistu + '</div>' : '') +
       (item.kuvaus    ? '<div class="news-desc">'  + item.kuvaus    + '</div>' : '') +
     '</a>'
   ).join('');
-
-  if (!isSearch && rest > 0) {
-    html += '<button class="news-load-more" onclick="showMoreNews(\'' + aihe + '\')">' +
-              '+ Näytä lisää (' + rest + ' uutista)' +
-            '</button>';
-  } else if (!isSearch && items.length > NEWS_LIMIT && limit >= items.length) {
-    html += '<button class="news-load-more news-load-less" onclick="showLessNews(\'' + aihe + '\')">' +
-              '↑ Näytä vähemmän' +
-            '</button>';
-  }
-
-  el.innerHTML = html;
-}
-
-function showMoreNews(aihe) {
-  visibleNews[aihe] = (visibleNews[aihe] || NEWS_LIMIT) + NEWS_LIMIT;
-  // Jos näytetään enemmän kuin cachessa on, haetaan lisää backendistä
-  const cached = newsCache[aihe] || [];
-  if (visibleNews[aihe] > cached.length) {
-    fetchMoreNews(aihe, visibleNews[aihe]);
-  } else {
-    renderNewsItems(document.getElementById('news-' + aihe), cached, aihe, false);
-  }
-}
-
-async function fetchMoreNews(aihe, limit) {
-  try {
-    const res   = await fetch(PROXY_BASE + '/news/' + aihe + '?limit=' + limit);
-    let items   = await res.json();
-    items.sort((a, b) => {
-      const parse = s => {
-        if (!s) return 0;
-        const m = s.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
-        if (m) return new Date(m[3], m[2] - 1, m[1]).getTime();
-        return new Date(s).getTime() || 0;
-      };
-      return parse(b.julkaistu) - parse(a.julkaistu);
-    });
-    newsCache[aihe] = items;
-    renderNewsItems(document.getElementById('news-' + aihe), items, aihe, false);
-  } catch (e) {
-    console.error('Virhe ladattaessa lisää uutisia:', e);
-  }
-}
-
-function showLessNews(aihe) {
-  visibleNews[aihe] = NEWS_LIMIT;
-  const el = document.getElementById('news-' + aihe);
-  renderNewsItems(el, newsCache[aihe], aihe, false);
-  el.closest('.card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 async function loadNews() {
@@ -508,7 +570,7 @@ async function loadNews() {
         continue;
       }
       newsCache[aihe] = items;
-      renderNewsItems(el, items, aihe, false);
+      renderNewsItems(el, items);
     } catch (e) {
       el.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:0.78rem;">Virhe ladattaessa uutisia</div>';
     }
