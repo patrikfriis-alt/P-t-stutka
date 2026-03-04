@@ -13,7 +13,22 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
   <link rel="stylesheet" href="styles.css">
+  <style>
+    .news-load-more {
+      display: block; width: 100%; margin: 8px 0 4px;
+      padding: 9px 16px; background: transparent;
+      color: var(--accent); border: 1px solid var(--border2);
+      border-radius: 6px; font-family: 'DM Mono', monospace;
+      font-size: 0.72rem; letter-spacing: 0.03em;
+      cursor: pointer; text-align: center;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .news-load-more:hover { background: rgba(59,130,246,0.08); border-color: var(--accent); }
+    .news-load-less { color: var(--text3); border-color: var(--border); }
+    .news-load-less:hover { background: var(--bg3); border-color: var(--border2); color: var(--text2); }
+  </style>
 </head>
 <body>
 
@@ -189,22 +204,6 @@
           </div>
         </div>
         <div style="margin-top:10px;font-size:0.65rem;color:var(--text3);">⚠️ Ennustedata päivitetään manuaalisesti — lähde: ETLA, TEM, Tilastokeskus</div>
-      </div>
-    </section>
-
-    <!-- Talousdata PDF-parsinnasta -->
-    <section class="card" aria-labelledby="talousdata-title">
-      <div class="card-header">
-        <h2 class="card-title" id="talousdata-title">Talousdata — KH-kokoukset</h2>
-        <span class="card-badge" id="talousdata-badge">ladataan...</span>
-      </div>
-      <div style="padding:8px 24px 12px;border-bottom:1px solid var(--border);">
-        <select id="talousdata-select" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text1);font-family:'DM Mono',monospace;font-size:0.75rem;padding:5px 10px;cursor:pointer;outline:none;">
-          <option>Ladataan kokouksia...</option>
-        </select>
-      </div>
-      <div id="talousdata-list" style="padding:0 24px 8px;">
-        <div style="padding:16px 0;color:var(--text3);font-size:0.78rem;">⏳ Ladataan...</div>
       </div>
     </section>
 
