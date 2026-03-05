@@ -412,7 +412,6 @@ function filterNews(aihe) {
     );
     renderNewsItems(el, filtered, aihe, true);
   } else {
-    visibleNews[aihe] = NEWS_LIMIT; // reset kun haku tyhjennetään
     renderNewsItems(el, newsCache[aihe], aihe, false);
   }
 }
@@ -422,7 +421,7 @@ function renderNewsItems(el, items, aihe, isSearch) {
     el.innerHTML = '<div style="padding:16px 0;color:var(--text3);font-size:0.78rem;">Ei hakutuloksia</div>';
     return;
   }
-  const limit   = (isSearch || !aihe) ? items.length : (visibleNews[aihe] || NEWS_LIMIT);
+  const limit   = isSearch ? items.length : (visibleNews[aihe] || NEWS_LIMIT);
   const visible = items.slice(0, limit);
   const rest    = items.length - visible.length;
 
@@ -430,7 +429,7 @@ function renderNewsItems(el, items, aihe, isSearch) {
     '<a href="' + (item.url || '#') + '" target="_blank" class="news-item">' +
       '<div class="news-title">' + item.otsikko + '</div>' +
       (item.julkaistu ? '<div class="news-meta">' + item.julkaistu + '</div>' : '') +
-      (item.kuvaus    ? '<div class="news-desc">'  + item.kuvaus    + '</div>' : '') +
+      (item.kuvaus    ? '<div class="news-desc">'  + item.kuvaus   + '</div>' : '') +
     '</a>'
   ).join('');
 
@@ -438,7 +437,7 @@ function renderNewsItems(el, items, aihe, isSearch) {
     html += '<button class="news-load-more" onclick="showMoreNews(\'' + aihe + '\')">' +
               '+ Näytä lisää (' + rest + ' uutista)' +
             '</button>';
-  } else if (!isSearch && items.length > NEWS_LIMIT && limit >= items.length) {
+  } else if (!isSearch && limit > NEWS_LIMIT) {
     html += '<button class="news-load-more news-load-less" onclick="showLessNews(\'' + aihe + '\')">' +
               '↑ Näytä vähemmän' +
             '</button>';
@@ -447,8 +446,23 @@ function renderNewsItems(el, items, aihe, isSearch) {
   el.innerHTML = html;
 }
 
-function showMoreNews(aihe) {
-  visibleNews[aihe] = (visibleNews[aihe] || NEWS_LIMIT) + NEWS_LIMIT;
+async function showMoreNews(aihe) {
+  const newLimit = (visibleNews[aihe] || NEWS_LIMIT) + NEWS_LIMIT;
+  // Jos tarvitaan enemmän kuin cachessa on, haetaan backendistä
+  if (newLimit > (newsCache[aihe]?.length || 0)) {
+    try {
+      const res   = await fetch(PROXY_BASE + '/news/' + aihe + '?limit=' + newLimit);
+      const items = await res.json();
+      if (Array.isArray(items) && items.length) {
+        items.sort((a, b) => {
+          const parse = s => { if (!s) return 0; const m = s.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/); if (m) return new Date(m[3], m[2]-1, m[1]).getTime(); return new Date(s).getTime() || 0; };
+          return parse(b.julkaistu) - parse(a.julkaistu);
+        });
+        newsCache[aihe] = items;
+      }
+    } catch (e) { console.error('showMoreNews fetch error', e); }
+  }
+  visibleNews[aihe] = newLimit;
   renderNewsItems(document.getElementById('news-' + aihe), newsCache[aihe], aihe, false);
 }
 
