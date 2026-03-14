@@ -17,16 +17,14 @@
   <link rel="stylesheet" href="styles.css">
   <style>
     .news-load-more {
-      display: block; width: 100%; margin: 8px 0 4px;
-      padding: 9px 16px; background: transparent;
-      color: var(--accent); border: 1px solid var(--border2);
-      border-radius: 6px; font-family: 'DM Mono', monospace;
-      font-size: 0.72rem; cursor: pointer; text-align: center;
-      transition: background 0.15s, border-color 0.15s;
+      display:block;width:100%;margin:8px 0 4px;padding:9px 16px;
+      background:transparent;color:var(--accent);border:1px solid var(--border2);
+      border-radius:6px;font-family:'DM Mono',monospace;font-size:0.72rem;
+      cursor:pointer;text-align:center;transition:background 0.15s,border-color 0.15s;
     }
-    .news-load-more:hover { background: rgba(59,130,246,0.08); border-color: var(--accent); }
-    .news-load-less { color: var(--text3); border-color: var(--border); }
-    .news-load-less:hover { background: var(--surface2); color: var(--text2); }
+    .news-load-more:hover { background:rgba(59,130,246,0.08);border-color:var(--accent); }
+    .news-load-less { color:var(--text3);border-color:var(--border); }
+    .news-load-less:hover { background:var(--surface2);color:var(--text2); }
   </style>
 </head>
 <body>
@@ -238,31 +236,22 @@
     </div>
 
     <!-- Uutiset -->
-    <div class="news-grid">
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">Arctial — uutiset</div>
-          <a href="https://www.arctial.com/newsroom" target="_blank" style="font-size:0.72rem;color:var(--cyan);text-decoration:none;">arctial.com →</a>
-        </div>
-        <div style="padding:8px 16px 0;">
-          <input id="search-arctial" type="search" placeholder="Hae uutisia..." aria-label="Hae Arctial-uutisia" style="width:100%;padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text1);font-size:0.78rem;box-sizing:border-box;">
-        </div>
-        <div id="news-arctial" style="padding:0 16px;">
-          <div style="padding:16px 0;color:var(--text3);font-size:0.78rem;">⏳ Ladataan...</div>
-        </div>
+    <section class="card" aria-labelledby="news-title">
+      <div class="card-header">
+        <h2 class="card-title" id="news-title">Uutiset</h2>
+        <a href="https://www.arctial.com/newsroom" target="_blank" style="font-size:0.72rem;color:var(--cyan);text-decoration:none;">arctial.com →</a>
       </div>
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">Kokkola — uutiset</div>
-        </div>
-        <div style="padding:8px 16px 0;">
-          <input id="search-kokkola" type="search" placeholder="Hae uutisia..." aria-label="Hae Kokkola-uutisia" style="width:100%;padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text1);font-size:0.78rem;box-sizing:border-box;">
-        </div>
-        <div id="news-kokkola" style="padding:0 16px;">
-          <div style="padding:16px 0;color:var(--text3);font-size:0.78rem;">⏳ Ladataan...</div>
-        </div>
+      <div style="display:flex;gap:0;border-bottom:1px solid var(--border);padding:0 16px;">
+        <button id="news-tab-arctial" onclick="switchNewsTab('arctial')" style="padding:8px 16px;background:none;border:none;border-bottom:2px solid var(--accent);color:var(--text1);font-family:'DM Mono',monospace;font-size:0.78rem;cursor:pointer;margin-bottom:-1px;">Arctial</button>
+        <button id="news-tab-kokkola" onclick="switchNewsTab('kokkola')" style="padding:8px 16px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text3);font-family:'DM Mono',monospace;font-size:0.78rem;cursor:pointer;margin-bottom:-1px;">Kokkola</button>
       </div>
-    </div>
+      <div style="padding:8px 16px 0;">
+        <input id="search-news" type="search" placeholder="Hae uutisia..." aria-label="Hae uutisia" style="width:100%;padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text1);font-size:0.78rem;box-sizing:border-box;">
+      </div>
+      <div id="news-panel" style="padding:0 16px;">
+        <div style="padding:16px 0;color:var(--text3);font-size:0.78rem;">⏳ Ladataan...</div>
+      </div>
+    </section>
 
   </div>
 </div>
