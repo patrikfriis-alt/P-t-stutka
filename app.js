@@ -19,6 +19,7 @@ let meetingFilter   = 'tulevat';
 const newsCache     = {};
 const NEWS_LIMIT    = 10;
 const visibleNews   = { arctial: NEWS_LIMIT, kokkola: NEWS_LIMIT };
+let activeNewsTab   = 'arctial';
 
 // ============================================================
 // VIEW NAVIGATION
@@ -402,18 +403,29 @@ function applyFilters() {
 // NEWS
 // ============================================================
 
-function filterNews(aihe) {
-  const query = (document.getElementById('search-' + aihe)?.value || '').toLowerCase().trim();
-  const el    = document.getElementById('news-' + aihe);
-  if (!el || !newsCache[aihe]) return;
-  if (query) {
-    const filtered = newsCache[aihe].filter(item =>
-      (item.otsikko + ' ' + (item.kuvaus || '')).toLowerCase().includes(query)
-    );
-    renderNewsItems(el, filtered, aihe, true);
-  } else {
-    renderNewsItems(el, newsCache[aihe], aihe, false);
+function switchNewsTab(aihe) {
+  activeNewsTab = aihe;
+  ['arctial', 'kokkola'].forEach(a => {
+    const tab = document.getElementById('news-tab-' + a);
+    if (tab) {
+      tab.style.borderBottomColor = a === aihe ? 'var(--accent)' : 'transparent';
+      tab.style.color = a === aihe ? 'var(--text1)' : 'var(--text3)';
+    }
+  });
+  const query = (document.getElementById('search-news')?.value || '').toLowerCase().trim();
+  const el = document.getElementById('news-panel');
+  if (!newsCache[aihe]) {
+    el.innerHTML = '<div style="padding:16px 0;color:var(--text3);font-size:0.78rem;">⏳ Ladataan...</div>';
+    return;
   }
+  const items = query
+    ? newsCache[aihe].filter(item => (item.otsikko + ' ' + (item.kuvaus || '')).toLowerCase().includes(query))
+    : newsCache[aihe];
+  renderNewsItems(el, items, aihe, !!query);
+}
+
+function filterNews() {
+  switchNewsTab(activeNewsTab);
 }
 
 function renderNewsItems(el, items, aihe, isSearch) {
@@ -442,13 +454,11 @@ function renderNewsItems(el, items, aihe, isSearch) {
               '↑ Näytä vähemmän' +
             '</button>';
   }
-
   el.innerHTML = html;
 }
 
 async function showMoreNews(aihe) {
   const newLimit = (visibleNews[aihe] || NEWS_LIMIT) + NEWS_LIMIT;
-  // Jos tarvitaan enemmän kuin cachessa on, haetaan backendistä
   if (newLimit > (newsCache[aihe]?.length || 0)) {
     try {
       const res   = await fetch(PROXY_BASE + '/news/' + aihe + '?limit=' + newLimit);
@@ -460,48 +470,34 @@ async function showMoreNews(aihe) {
         });
         newsCache[aihe] = items;
       }
-    } catch (e) { console.error('showMoreNews fetch error', e); }
+    } catch (e) { console.error('showMoreNews error', e); }
   }
   visibleNews[aihe] = newLimit;
-  renderNewsItems(document.getElementById('news-' + aihe), newsCache[aihe], aihe, false);
+  renderNewsItems(document.getElementById('news-panel'), newsCache[aihe], aihe, false);
 }
 
 function showLessNews(aihe) {
   visibleNews[aihe] = NEWS_LIMIT;
-  const el = document.getElementById('news-' + aihe);
+  const el = document.getElementById('news-panel');
   renderNewsItems(el, newsCache[aihe], aihe, false);
   el.closest('.card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 async function loadNews() {
   for (const aihe of ['arctial', 'kokkola']) {
-    const el = document.getElementById('news-' + aihe);
-    if (!el) continue;
     try {
       const res  = await fetch(PROXY_BASE + '/news/' + aihe);
       let items  = await res.json();
-
-      // Sort newest first
       items.sort((a, b) => {
-        const parse = s => {
-          if (!s) return 0;
-          const m = s.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
-          if (m) return new Date(m[3], m[2] - 1, m[1]).getTime();
-          return new Date(s).getTime() || 0;
-        };
+        const parse = s => { if (!s) return 0; const m = s.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/); if (m) return new Date(m[3], m[2]-1, m[1]).getTime(); return new Date(s).getTime() || 0; };
         return parse(b.julkaistu) - parse(a.julkaistu);
       });
-
-      if (!items.length) {
-        el.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:0.78rem;">Ei uutisia saatavilla</div>';
-        continue;
-      }
-      newsCache[aihe] = items;
-      renderNewsItems(el, items, aihe, false);
+      newsCache[aihe] = items.length ? items : [];
     } catch (e) {
-      el.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:0.78rem;">Virhe ladattaessa uutisia</div>';
+      newsCache[aihe] = [];
     }
   }
+  switchNewsTab('arctial');
 }
 
 // ============================================================
@@ -577,7 +573,5 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('meeting-search')?.addEventListener('input', renderAgendasTop);
 
   // News search
-  ['arctial', 'kokkola'].forEach(aihe => {
-    document.getElementById('search-' + aihe)?.addEventListener('input', () => filterNews(aihe));
-  });
+  document.getElementById('search-news')?.addEventListener('input', filterNews);
 });
