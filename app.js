@@ -500,6 +500,7 @@ function switchNewsTab(aihe) {
   ['arctial', 'kokkola'].forEach(a => {
     const tab = document.getElementById('news-tab-' + a);
     if (tab) {
+      tab.classList.toggle('active', a === aihe);
       tab.style.borderBottomColor = a === aihe ? 'var(--accent)' : 'transparent';
       tab.style.color = a === aihe ? 'var(--text1)' : 'var(--text3)';
     }
@@ -532,7 +533,10 @@ function renderNewsItems(el, items, aihe, isSearch) {
   let html = visible.map(item =>
     '<a href="' + (item.url || '#') + '" target="_blank" class="news-item">' +
       '<div class="news-title">' + item.otsikko + '</div>' +
-      (item.julkaistu ? '<div class="news-meta">' + item.julkaistu + '</div>' : '') +
+      '<div class="news-meta">' +
+        (item.julkaistu ? item.julkaistu : '') +
+        (item.source ? ' · <span class="news-source">' + item.source + '</span>' : '') +
+      '</div>' +
       (item.kuvaus    ? '<div class="news-desc">'  + item.kuvaus   + '</div>' : '') +
     '</a>'
   ).join('');
@@ -576,20 +580,54 @@ function showLessNews(aihe) {
 }
 
 async function loadNews() {
-  for (const aihe of ['arctial', 'kokkola']) {
-    try {
-      const res  = await fetch(PROXY_BASE + '/news/' + aihe);
-      let items  = await res.json();
-      items.sort((a, b) => {
-        const parse = s => { if (!s) return 0; const m = s.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/); if (m) return new Date(m[3], m[2]-1, m[1]).getTime(); return new Date(s).getTime() || 0; };
-        return parse(b.julkaistu) - parse(a.julkaistu);
-      });
-      newsCache[aihe] = items.length ? items : [];
-    } catch (e) {
-      console.error('Error loading news for ' + aihe + ':', e);
-      newsCache[aihe] = [];
-    }
+  // Load Arctial news
+  try {
+    const res  = await fetch(PROXY_BASE + '/news/arctial');
+    let items  = await res.json();
+    items.sort((a, b) => {
+      const parse = s => { if (!s) return 0; const m = s.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/); if (m) return new Date(m[3], m[2]-1, m[1]).getTime(); return new Date(s).getTime() || 0; };
+      return parse(b.julkaistu) - parse(a.julkaistu);
+    });
+    newsCache['arctial'] = items.length ? items : [];
+  } catch (e) {
+    console.error('Error loading news for arctial:', e);
+    newsCache['arctial'] = [];
   }
+
+  // Load Kokkola news from multiple sources
+  try {
+    const sources = [
+      { url: PROXY_BASE + '/news/kokkola', label: 'Arctial' },
+      { url: PROXY_BASE + '/rss?url=' + encodeURIComponent('https://feeds.yle.fi/uutiset/v1/recent.rss?publisherIds=YLE_UUTISET&concepts=18-135629'), label: 'YLE' },
+      { url: PROXY_BASE + '/rss?url=' + encodeURIComponent('https://www.ampparit.com/rss.php'), label: 'Ampparit' }
+    ];
+    const results = await Promise.all(sources.map(async s => {
+      const res = await fetch(s.url);
+      let items = await res.json();
+      items.forEach(item => item.source = s.label);
+      if (s.label === 'Ampparit') {
+        items = items.filter(item => (item.otsikko + ' ' + (item.kuvaus || '')).toLowerCase().includes('kokkola'));
+      }
+      return items;
+    }));
+    const allItems = [].concat(...results);
+    allItems.sort((a, b) => {
+      const parse = s => { if (!s) return 0; const m = s.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/); if (m) return new Date(m[3], m[2]-1, m[1]).getTime(); return new Date(s).getTime() || 0; };
+      return parse(b.julkaistu) - parse(a.julkaistu);
+    });
+    // Deduplicate by title
+    const seen = new Set();
+    const deduped = allItems.filter(item => {
+      if (seen.has(item.otsikko)) return false;
+      seen.add(item.otsikko);
+      return true;
+    });
+    newsCache['kokkola'] = deduped.length ? deduped : [];
+  } catch (e) {
+    console.error('Error loading news for kokkola:', e);
+    newsCache['kokkola'] = [];
+  }
+
   switchNewsTab('arctial');
 }
 
