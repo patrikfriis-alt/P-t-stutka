@@ -19,9 +19,12 @@ let meetingFilter   = 'tulevat';
 let totalDecisionsCount = 0;
 const newsCache     = {};
 const statsCache    = { data: null, timestamp: null };
+const agendasCache  = { data: null, timestamp: null };
+const meetingsCache = { data: null, timestamp: null };
 const NEWS_LIMIT    = 10;
 const visibleNews   = { arctial: NEWS_LIMIT, kokkola: NEWS_LIMIT };
 let activeNewsTab   = 'arctial';
+let searchTimeout;
 
 // ============================================================
 // VIEW NAVIGATION
@@ -160,7 +163,7 @@ async function loadDecisions() {
     applyFilters();
   } catch (e) {
     console.error('Error loading decisions:', e);
-    list.innerHTML = '<div style="padding:32px 24px;text-align:center;color:var(--red);font-size:0.8rem;">⚠️ Virhe ladattaessa päätöksiä.</div>';
+    list.innerHTML = '<div style="padding:32px 24px;text-align:center;color:var(--text3);font-size:0.8rem;">Tietoja ei voida ladata juuri nyt. Yritä myöhemmin.</div>';
   }
 }
 
@@ -169,67 +172,80 @@ async function loadDecisions() {
 // ============================================================
 
 async function loadMeetings() {
-  try {
-    const res    = await fetch(PROXY_MEETINGS);
-    const buffer = await res.arrayBuffer();
-    let text     = new TextDecoder('windows-1252').decode(buffer);
-    text         = text.replace(/encoding="[^"]+"/i, 'encoding="utf-8"');
-    const xml    = new DOMParser().parseFromString(text, 'application/xml');
-    const items  = xml.querySelectorAll('item');
-
-    if (!items.length) return;
-
-    document.getElementById('stat-paatokset').textContent = items.length;
-
-    const list = document.getElementById('decisions-list');
-    items.forEach(item => {
-      const getTag = tag => {
-        const el = item.querySelector(tag);
-        return el ? (el.textContent || el.innerHTML || '').replace(/<!\[CDATA\[|\]\]>/g, '').trim() : '';
-      };
-      const title   = getTag('title') || '–';
-      const desc    = getTag('description') || '';
-      const link    = getTag('link') || '#';
-      const pubDate = getTag('pubDate') || '';
-
-      let dateStr = '';
-      if (pubDate) { const d = new Date(pubDate); if (!isNaN(d)) dateStr = d.toLocaleDateString('fi-FI'); }
-
-      let issuer = 'Kokkola', meetingTitle = title;
-      if (title.includes(' / ')) {
-        const parts = title.split(' / ');
-        issuer = parts[0].trim();
-        meetingTitle = parts.slice(1).join(' / ').trim();
+  const now = Date.now();
+  let items;
+  if (meetingsCache.data && (now - meetingsCache.timestamp) < 5 * 60 * 1000) {
+    items = meetingsCache.data;
+  } else {
+    try {
+      const res    = await fetch(PROXY_MEETINGS);
+      const buffer = await res.arrayBuffer();
+      let text     = new TextDecoder('windows-1252').decode(buffer);
+      text         = text.replace(/encoding="[^"]+"/i, 'encoding="utf-8"');
+      const xml    = new DOMParser().parseFromString(text, 'application/xml');
+      items  = xml.querySelectorAll('item');
+      meetingsCache.data = Array.from(items);
+      meetingsCache.timestamp = now;
+    } catch (e) {
+      console.error('Virhe ladattaessa kokousasioita:', e);
+      const list = document.getElementById('decisions-list');
+      if (list.innerHTML.includes('Ladataan')) {
+        list.innerHTML = '<div style="padding:32px 24px;text-align:center;color:var(--text3);font-size:0.8rem;">Tietoja ei voida ladata juuri nyt. Yritä myöhemmin.</div>';
       }
-
-      const el = document.createElement('div');
-      el.className      = 'decision-item';
-      el.dataset.status = 'meeting';
-      el.dataset.text   = (title + ' ' + desc).toLowerCase();
-      const dmatch = title.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
-      if (dmatch) {
-        const md = new Date(parseInt(dmatch[3]), parseInt(dmatch[2]) - 1, parseInt(dmatch[1]));
-        if (!isNaN(md.getTime())) el.dataset.date = md.toISOString();
-      }
-      el.innerHTML =
-        '<div class="decision-dot" style="background:var(--cyan)"></div>' +
-        '<div class="decision-content">' +
-          '<div class="decision-title">' + meetingTitle + '</div>' +
-          '<div class="decision-meta"><span>' + issuer + '</span>' + (dateStr ? '<span>' + dateStr + '</span>' : '') + '</div>' +
-        '</div>' +
-        '<div class="decision-status status-review">Kokous</div>';
-      el.addEventListener('click', () => openModal(meetingTitle, desc || 'Ei kuvausta.', issuer + (dateStr ? ' – ' + dateStr : ''), link));
-      list.appendChild(el);
-    });
-
-    // Update badge
-    const badge = document.getElementById('decisions-count');
-    const current = parseInt(badge.textContent) || 0;
-    badge.textContent = (current + items.length) + ' kpl';
-    applyFilters();
-  } catch (e) {
-    console.error('Virhe ladattaessa kokousasioita:', e);
+      return;
+    }
   }
+
+  if (!items.length) return;
+
+  document.getElementById('stat-paatokset').textContent = items.length;
+
+  const list = document.getElementById('decisions-list');
+  items.forEach(item => {
+    const getTag = tag => {
+      const el = item.querySelector(tag);
+      return el ? (el.textContent || el.innerHTML || '').replace(/<!\[CDATA\[|\]\]>/g, '').trim() : '';
+    };
+    const title   = getTag('title') || '–';
+    const desc    = getTag('description') || '';
+    const link    = getTag('link') || '#';
+    const pubDate = getTag('pubDate') || '';
+
+    let dateStr = '';
+    if (pubDate) { const d = new Date(pubDate); if (!isNaN(d)) dateStr = d.toLocaleDateString('fi-FI'); }
+
+    let issuer = 'Kokkola', meetingTitle = title;
+    if (title.includes(' / ')) {
+      const parts = title.split(' / ');
+      issuer = parts[0].trim();
+      meetingTitle = parts.slice(1).join(' / ').trim();
+    }
+
+    const el = document.createElement('div');
+    el.className      = 'decision-item';
+    el.dataset.status = 'meeting';
+    el.dataset.text   = (title + ' ' + desc).toLowerCase();
+    const dmatch = title.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+    if (dmatch) {
+      const md = new Date(parseInt(dmatch[3]), parseInt(dmatch[2]) - 1, parseInt(dmatch[1]));
+      if (!isNaN(md.getTime())) el.dataset.date = md.toISOString();
+    }
+    el.innerHTML =
+      '<div class="decision-dot" style="background:var(--cyan)"></div>' +
+      '<div class="decision-content">' +
+        '<div class="decision-title">' + meetingTitle + '</div>' +
+        '<div class="decision-meta"><span>' + issuer + '</span>' + (dateStr ? '<span>' + dateStr + '</span>' : '') + '</div>' +
+      '</div>' +
+      '<div class="decision-status status-review">Kokous</div>';
+    el.addEventListener('click', () => openModal(meetingTitle, desc || 'Ei kuvausta.', issuer + (dateStr ? ' – ' + dateStr : ''), link));
+    list.appendChild(el);
+  });
+
+  // Update badge
+  const badge = document.getElementById('decisions-count');
+  const current = parseInt(badge.textContent) || 0;
+  badge.textContent = (current + items.length) + ' kpl';
+  applyFilters();
 }
 
 // ============================================================
@@ -283,6 +299,14 @@ async function loadAgendas() {
   const list = document.getElementById('upcoming-meetings-list-top');
   if (!list) return;
 
+  const now = Date.now();
+  if (agendasCache.data && (now - agendasCache.timestamp) < 5 * 60 * 1000) {
+    allAgendaItems = agendasCache.data;
+    renderAgendasTop();
+    loadNews();
+    return;
+  }
+
   try {
     const res    = await fetch(PROXY_AGENDAS);
     const buffer = await res.arrayBuffer();
@@ -308,12 +332,15 @@ async function loadAgendas() {
       return { title, link: linkUrl, date, dateStr };
     });
 
-    const now = new Date();
+    agendasCache.data = allAgendaItems;
+    agendasCache.timestamp = now;
+
+    const nowDate = new Date();
     allAgendaItems.sort((a, b) => {
-      const da = a.date ? new Date(a.date) : now;
-      const db = b.date ? new Date(b.date) : now;
-      if (da >= now && db >= now) return da - db;
-      if (da <  now && db <  now) return db - da;
+      const da = a.date ? new Date(a.date) : nowDate;
+      const db = b.date ? new Date(b.date) : nowDate;
+      if (da >= nowDate && db >= nowDate) return da - db;
+      if (da <  nowDate && db <  nowDate) return db - da;
       return 0;
     });
 
@@ -321,7 +348,7 @@ async function loadAgendas() {
     loadNews();
   } catch (e) {
     console.error('Error loading agendas:', e);
-    list.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:0.78rem;">Virhe ladattaessa kokouksia</div>';
+    list.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:0.78rem;">Tietoja ei voida ladata juuri nyt. Yritä myöhemmin.</div>';
   }
 }
 
@@ -338,9 +365,12 @@ function setFilter(filter, btn) {
 }
 
 function handleSearch(value) {
-  activeQuery = value.trim().toLowerCase();
-  document.getElementById('searchClear').style.display = activeQuery ? 'block' : 'none';
-  applyFilters();
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    activeQuery = value.trim().toLowerCase();
+    document.getElementById('searchClear').style.display = activeQuery ? 'block' : 'none';
+    applyFilters();
+  }, 300);
 }
 
 function clearSearch() {
