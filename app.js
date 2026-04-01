@@ -16,7 +16,9 @@ let showAll         = false;
 let activeQuery     = '';
 let allAgendaItems  = [];
 let meetingFilter   = 'tulevat';
+let totalDecisionsCount = 0;
 const newsCache     = {};
+const statsCache    = { data: null, timestamp: null };
 const NEWS_LIMIT    = 10;
 const visibleNews   = { arctial: NEWS_LIMIT, kokkola: NEWS_LIMIT };
 let activeNewsTab   = 'arctial';
@@ -35,6 +37,7 @@ function showView(name) {
   document.getElementById('nav-search').style.display = name === 'dashboard' ? 'flex' : 'none';
 
   if (name === 'dashboard') {
+    totalDecisionsCount = 0;
     Promise.all([loadDecisions(), loadStats(), loadMeetings(), loadAgendas()]);
   }
 }
@@ -44,11 +47,26 @@ function showView(name) {
 // ============================================================
 
 async function loadStats() {
-  try {
-    const res  = await fetch(PROXY_BASE + '/stats');
-    const data = await res.json();
+  const now = Date.now();
+  let data;
+  if (statsCache.data && (now - statsCache.timestamp) < 5 * 60 * 1000) {
+    data = statsCache.data;
+  } else {
+    try {
+      const res  = await fetch(PROXY_BASE + '/stats');
+      data = await res.json();
+      statsCache.data = data;
+      statsCache.timestamp = now;
+    } catch (e) {
+      console.error('Error loading stats:', e);
+      ['stat-vaesto', 'stat-nuoret', 'stat-tyottomyys'].forEach(id => {
+        document.getElementById(id).textContent = '–';
+      });
+      return;
+    }
+  }
 
-    // Väestö
+  // Väestö
     if (!isNaN(data.vaesto)) {
       document.getElementById('stat-vaesto').textContent = Math.round(data.vaesto).toLocaleString('fi-FI');
       const diff = data.vaesto - data.vaestoPrev;
@@ -77,12 +95,7 @@ async function loadStats() {
       el.textContent = sign + diff.toFixed(1) + '% vs vuosi sitten (' + (data.tyottomyysKk || '') + ')';
       el.className = 'stat-change ' + (diff > 0 ? 'up' : diff < 0 ? 'down' : 'neutral');
     }
-  } catch (e) {
-    console.error('Error loading stats:', e);
-    ['stat-vaesto', 'stat-nuoret', 'stat-tyottomyys'].forEach(id => {
-      document.getElementById(id).textContent = '–';
-    });
-  }
+}
 }
 
 // ============================================================
@@ -143,9 +156,11 @@ async function loadDecisions() {
       list.appendChild(el);
     });
 
-    document.getElementById('decisions-count').textContent = items.length + ' kpl';
+    totalDecisionsCount += items.length;
+    document.getElementById('decisions-count').textContent = totalDecisionsCount + ' kpl';
     applyFilters();
   } catch (e) {
+    console.error('Error loading decisions:', e);
     list.innerHTML = '<div style="padding:32px 24px;text-align:center;color:var(--red);font-size:0.8rem;">⚠️ Virhe ladattaessa päätöksiä.</div>';
   }
 }
@@ -306,6 +321,7 @@ async function loadAgendas() {
     renderAgendasTop();
     loadNews();
   } catch (e) {
+    console.error('Error loading agendas:', e);
     list.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:0.78rem;">Virhe ladattaessa kokouksia</div>';
   }
 }
@@ -347,15 +363,20 @@ function applyFilters() {
     const itemDate = item.dataset.date ? new Date(item.dataset.date) : null;
 
     let matchFilter = false;
+    // Show all items regardless of status
     if (activeFilter === 'all') {
       matchFilter = true;
+    // Show only passed decisions (official decisions)
     } else if (activeFilter === 'viranomais') {
       matchFilter = status === 'passed';
+    // Show passed decisions and past meetings
     } else if (activeFilter === 'paatokset') {
       matchFilter = status === 'passed' || (status === 'meeting' && itemDate && itemDate < now);
+    // Show upcoming meetings and proposals
     } else if (activeFilter === 'esitykset') {
       matchFilter = status === 'meeting' && (!itemDate || itemDate >= now);
     } else {
+      // Fallback: match status directly (should not occur with current filters)
       matchFilter = status === activeFilter;
     }
 
@@ -364,16 +385,21 @@ function applyFilters() {
     item.style.display = show ? '' : 'none';
 
     if (show) {
-      // Highlight search term
+        // Highlight search term
       const titleEl = item.querySelector('.decision-title');
       if (activeQuery && titleEl) {
         const orig = titleEl.textContent;
         const idx  = orig.toLowerCase().indexOf(activeQuery);
         if (idx >= 0) {
-          titleEl.innerHTML =
-            orig.slice(0, idx) +
-            '<span class="search-highlight">' + orig.slice(idx, idx + activeQuery.length) + '</span>' +
-            orig.slice(idx + activeQuery.length);
+          titleEl.textContent = ''; // Clear existing content
+          const before = document.createTextNode(orig.slice(0, idx));
+          const highlight = document.createElement('span');
+          highlight.className = 'search-highlight';
+          highlight.textContent = orig.slice(idx, idx + activeQuery.length);
+          const after = document.createTextNode(orig.slice(idx + activeQuery.length));
+          titleEl.appendChild(before);
+          titleEl.appendChild(highlight);
+          titleEl.appendChild(after);
         }
       }
       visible++;
@@ -492,6 +518,7 @@ async function loadNews() {
       });
       newsCache[aihe] = items.length ? items : [];
     } catch (e) {
+      console.error('Error loading news for ' + aihe + ':', e);
       newsCache[aihe] = [];
     }
   }

@@ -467,6 +467,7 @@ nav {
 }
 .filter-btn:hover { border-color: var(--text3); color: var(--text); }
 .filter-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+/* Specific active states for different filter types to use appropriate colors */
 .filter-btn.f-passed.active   { background: var(--green); border-color: var(--green); }
 .filter-btn.f-rejected.active { background: var(--red);   border-color: var(--red); }
 .filter-btn.f-upcoming.active { background: var(--amber); border-color: var(--amber); color: #000; }
@@ -556,6 +557,25 @@ nav {
 .news-title { font-size: 0.8rem; color: var(--text1); line-height: 1.4; }
 .news-meta  { font-size: 0.68rem; color: var(--text3); }
 .news-desc  { font-size: 0.72rem; color: var(--text2); margin-top: 2px; line-height: 1.3; }
+
+.news-load-more {
+  display: block;
+  width: 100%;
+  margin: 8px 0 4px;
+  padding: 9px 16px;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.72rem;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s, border-color 0.15s;
+}
+.news-load-more:hover { background: rgba(59,130,246,0.08); border-color: var(--accent); }
+.news-load-less { color: var(--text3); border-color: var(--border); }
+.news-load-less:hover { background: var(--surface2); color: var(--text2); }
 
 /* ============================================================
    TALOUSDATA
