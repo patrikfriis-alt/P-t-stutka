@@ -96,7 +96,6 @@ async function loadStats() {
       el.className = 'stat-change ' + (diff > 0 ? 'up' : diff < 0 ? 'down' : 'neutral');
     }
 }
-}
 
 // ============================================================
 // DECISIONS
