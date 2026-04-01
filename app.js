@@ -35,10 +35,7 @@ function showView(name) {
   document.getElementById('nav-search').style.display = name === 'dashboard' ? 'flex' : 'none';
 
   if (name === 'dashboard') {
-    loadDecisions();
-    loadStats();
-    loadMeetings();
-    loadAgendas();
+    Promise.all([loadDecisions(), loadStats(), loadMeetings(), loadAgendas()]);
   }
 }
 
@@ -81,6 +78,7 @@ async function loadStats() {
       el.className = 'stat-change ' + (diff > 0 ? 'up' : diff < 0 ? 'down' : 'neutral');
     }
   } catch (e) {
+    console.error('Error loading stats:', e);
     ['stat-vaesto', 'stat-nuoret', 'stat-tyottomyys'].forEach(id => {
       document.getElementById(id).textContent = '–';
     });
@@ -509,7 +507,7 @@ function openModal(title, body, tag, link) {
   document.getElementById('modal-body').textContent  = body;
   document.getElementById('modal-tag').textContent   = tag;
   const btn = document.querySelector('.modal-footer .btn-primary');
-  if (btn) btn.onclick = () => window.open(link, '_blank');
+  if (btn) btn.onclick = () => { const newWindow = window.open(link, '_blank'); if (newWindow) newWindow.opener = null; };
   const overlay = document.getElementById('modal');
   overlay.classList.add('open');
   overlay.removeAttribute('aria-hidden');
