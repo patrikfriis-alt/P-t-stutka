@@ -597,12 +597,19 @@ async function loadNews() {
         console.log('Raw XML response length:', text.length, 'for', s.url);
         const xml = new DOMParser().parseFromString(text, 'application/xml');
         const xmlItems = xml.querySelectorAll('item');
-        items = Array.from(xmlItems).map(item => ({
-          otsikko: item.querySelector('title')?.textContent || '–',
-          kuvaus: item.querySelector('description')?.textContent || '',
-          julkaistu: item.querySelector('pubDate')?.textContent || '',
-          url: item.querySelector('link')?.textContent || '#'
-        }));
+        items = Array.from(xmlItems).map(item => {
+          const titleText = item.querySelector('title')?.textContent || '–';
+          const normalizedTitle = titleText.split(' - ')[0].trim();
+          const cleanTitle = normalizedTitle.replace(/<[^>]*>/g, '');
+          const descText = item.querySelector('description')?.textContent || '';
+          const cleanDesc = descText.replace(/<[^>]*>/g, '');
+          return {
+            otsikko: cleanTitle,
+            kuvaus: cleanDesc,
+            julkaistu: item.querySelector('pubDate')?.textContent || '',
+            url: item.querySelector('link')?.textContent || '#'
+          };
+        });
         console.log('Parsed items from XML:', items.length, 'for', s.url);
       } else {
         // Parse as JSON
@@ -650,12 +657,19 @@ async function loadNews() {
         console.log('Raw XML response length:', text.length, 'for', s.url);
         const xml = new DOMParser().parseFromString(text, 'application/xml');
         const xmlItems = xml.querySelectorAll('item');
-        items = Array.from(xmlItems).map(item => ({
-          otsikko: item.querySelector('title')?.textContent || '–',
-          kuvaus: item.querySelector('description')?.textContent || '',
-          julkaistu: item.querySelector('pubDate')?.textContent || '',
-          url: item.querySelector('link')?.textContent || '#'
-        }));
+        items = Array.from(xmlItems).map(item => {
+          const titleText = item.querySelector('title')?.textContent || '–';
+          const normalizedTitle = titleText.split(' - ')[0].trim();
+          const cleanTitle = normalizedTitle.replace(/<[^>]*>/g, '');
+          const descText = item.querySelector('description')?.textContent || '';
+          const cleanDesc = descText.replace(/<[^>]*>/g, '');
+          return {
+            otsikko: cleanTitle,
+            kuvaus: cleanDesc,
+            julkaistu: item.querySelector('pubDate')?.textContent || '',
+            url: item.querySelector('link')?.textContent || '#'
+          };
+        });
         console.log('Parsed items from XML:', items.length, 'for', s.url);
       } else {
         // Parse as JSON
