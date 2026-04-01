@@ -577,6 +577,30 @@ nav {
 .news-load-less { color: var(--text3); border-color: var(--border); }
 .news-load-less:hover { background: var(--surface2); color: var(--text2); }
 
+/* Pulse animation for loading states */
+.pulse {
+  animation: pulse 1.5s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Retry button styling */
+.retry-btn {
+  margin-top: 8px;
+  padding: 6px 12px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.retry-btn:hover { background: var(--accent2); }
+
 /* ============================================================
    TALOUSDATA
    ============================================================ */

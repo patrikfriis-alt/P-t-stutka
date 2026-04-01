@@ -107,6 +107,7 @@ async function loadStats() {
 async function loadDecisions() {
   const list = document.getElementById('decisions-list');
   list.innerHTML = '<div style="padding:32px 24px;text-align:center;color:var(--text3);font-size:0.8rem;">⏳ Ladataan päätöksiä Kokkolasta...</div>';
+  list.classList.add('pulse');
 
   try {
     const res    = await fetch(PROXY_DECISIONS);
@@ -118,6 +119,7 @@ async function loadDecisions() {
 
     if (!items.length) {
       list.innerHTML = '<div style="padding:32px 24px;text-align:center;color:var(--text3);font-size:0.8rem;">⚠️ Ei päätöksiä saatavilla</div>';
+      list.classList.remove('pulse');
       return;
     }
 
@@ -129,7 +131,12 @@ async function loadDecisions() {
       const pubDate = item.querySelector('pubDate')?.textContent || '';
 
       let dateStr = '';
-      if (pubDate) { const d = new Date(pubDate); if (!isNaN(d)) dateStr = d.toLocaleDateString('fi-FI'); }
+      if (pubDate) {
+        let d = new Date(pubDate);
+        if (isNaN(d.getTime())) d = new Date(Date.parse(pubDate));
+        if (isNaN(d.getTime())) d = new Date();
+        dateStr = d.toLocaleDateString('fi-FI');
+      }
 
       let issuer = 'Kokkola', decisionTitle = title;
       if (title.includes(' / ')) {
@@ -142,7 +149,12 @@ async function loadDecisions() {
       el.className     = 'decision-item';
       el.dataset.status = 'passed';
       el.dataset.text  = (title + ' ' + desc).toLowerCase();
-      if (pubDate) { const pd = new Date(pubDate); if (!isNaN(pd)) el.dataset.date = pd.toISOString(); }
+      if (pubDate) {
+        let d = new Date(pubDate);
+        if (isNaN(d.getTime())) d = new Date(Date.parse(pubDate));
+        if (isNaN(d.getTime())) d = new Date();
+        el.dataset.date = d.toISOString();
+      }
       el.innerHTML = `
         <div class="decision-dot" style="background:var(--green)"></div>
         <div class="decision-content">
@@ -161,9 +173,16 @@ async function loadDecisions() {
     totalDecisionsCount += items.length;
     document.getElementById('decisions-count').textContent = totalDecisionsCount + ' kpl';
     applyFilters();
+    list.classList.remove('pulse');
   } catch (e) {
     console.error('Error loading decisions:', e);
     list.innerHTML = '<div style="padding:32px 24px;text-align:center;color:var(--text3);font-size:0.8rem;">Tietoja ei voida ladata juuri nyt. Yritä myöhemmin.</div>';
+    const btn = document.createElement('button');
+    btn.className = 'retry-btn';
+    btn.textContent = 'Yritä uudelleen';
+    btn.onclick = () => loadDecisions();
+    list.appendChild(btn);
+    list.classList.remove('pulse');
   }
 }
 
@@ -173,6 +192,7 @@ async function loadDecisions() {
 
 async function loadMeetings() {
   const now = Date.now();
+  const list = document.getElementById('decisions-list');
   let items;
   if (meetingsCache.data && (now - meetingsCache.timestamp) < 5 * 60 * 1000) {
     items = meetingsCache.data;
@@ -188,9 +208,13 @@ async function loadMeetings() {
       meetingsCache.timestamp = now;
     } catch (e) {
       console.error('Virhe ladattaessa kokousasioita:', e);
-      const list = document.getElementById('decisions-list');
       if (list.innerHTML.includes('Ladataan')) {
         list.innerHTML = '<div style="padding:32px 24px;text-align:center;color:var(--text3);font-size:0.8rem;">Tietoja ei voida ladata juuri nyt. Yritä myöhemmin.</div>';
+        const btn = document.createElement('button');
+        btn.className = 'retry-btn';
+        btn.textContent = 'Yritä uudelleen';
+        btn.onclick = () => loadMeetings();
+        list.appendChild(btn);
       }
       return;
     }
@@ -200,7 +224,6 @@ async function loadMeetings() {
 
   document.getElementById('stat-paatokset').textContent = items.length;
 
-  const list = document.getElementById('decisions-list');
   items.forEach(item => {
     const getTag = tag => {
       const el = item.querySelector(tag);
@@ -212,7 +235,12 @@ async function loadMeetings() {
     const pubDate = getTag('pubDate') || '';
 
     let dateStr = '';
-    if (pubDate) { const d = new Date(pubDate); if (!isNaN(d)) dateStr = d.toLocaleDateString('fi-FI'); }
+    if (pubDate) {
+      let d = new Date(pubDate);
+      if (isNaN(d.getTime())) d = new Date(Date.parse(pubDate));
+      if (isNaN(d.getTime())) d = new Date();
+      dateStr = d.toLocaleDateString('fi-FI');
+    }
 
     let issuer = 'Kokkola', meetingTitle = title;
     if (title.includes(' / ')) {
@@ -227,8 +255,10 @@ async function loadMeetings() {
     el.dataset.text   = (title + ' ' + desc).toLowerCase();
     const dmatch = title.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
     if (dmatch) {
-      const md = new Date(parseInt(dmatch[3]), parseInt(dmatch[2]) - 1, parseInt(dmatch[1]));
-      if (!isNaN(md.getTime())) el.dataset.date = md.toISOString();
+      let md = new Date(parseInt(dmatch[3]), parseInt(dmatch[2]) - 1, parseInt(dmatch[1]));
+      if (isNaN(md.getTime())) md = new Date(Date.parse(title));
+      if (isNaN(md.getTime())) md = new Date();
+      el.dataset.date = md.toISOString();
     }
     el.innerHTML =
       '<div class="decision-dot" style="background:var(--cyan)"></div>' +
@@ -307,6 +337,9 @@ async function loadAgendas() {
     return;
   }
 
+  list.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:0.78rem;">⏳ Ladataan...</div>';
+  list.classList.add('pulse');
+
   try {
     const res    = await fetch(PROXY_AGENDAS);
     const buffer = await res.arrayBuffer();
@@ -322,12 +355,11 @@ async function loadAgendas() {
       let dateStr = '', date = null, title = fullTitle;
       if (dateMatch) {
         const [, day, mon, year] = dateMatch;
-        const d = new Date(year, mon - 1, day);
-        if (!isNaN(d.getTime())) {
-          date    = d.toISOString();
-          dateStr = d.toLocaleDateString('fi-FI', { weekday: 'short', day: 'numeric', month: 'numeric', year: 'numeric' });
-        }
-        title = fullTitle.replace(dateMatch[0], '').trim();
+        let d = new Date(year, mon - 1, day);
+        if (isNaN(d.getTime())) d = new Date(Date.parse(fullTitle));
+        if (isNaN(d.getTime())) d = new Date();
+        date    = d.toISOString();
+        dateStr = d.toLocaleDateString('fi-FI', { weekday: 'short', day: 'numeric', month: 'numeric', year: 'numeric' });
       }
       return { title, link: linkUrl, date, dateStr };
     });
@@ -346,9 +378,16 @@ async function loadAgendas() {
 
     renderAgendasTop();
     loadNews();
+    list.classList.remove('pulse');
   } catch (e) {
     console.error('Error loading agendas:', e);
     list.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:0.78rem;">Tietoja ei voida ladata juuri nyt. Yritä myöhemmin.</div>';
+    const btn = document.createElement('button');
+    btn.className = 'retry-btn';
+    btn.textContent = 'Yritä uudelleen';
+    btn.onclick = () => loadAgendas();
+    list.appendChild(btn);
+    list.classList.remove('pulse');
   }
 }
 
@@ -628,4 +667,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // News search
   document.getElementById('search-news')?.addEventListener('input', filterNews);
+
+  // Keyboard navigation for filters
+  document.querySelectorAll('[data-dfilter], [data-mfilter]').forEach(btn => {
+    btn.tabIndex = 0;
+    btn.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        btn.click();
+      }
+    });
+  });
 });
