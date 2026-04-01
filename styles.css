@@ -56,6 +56,36 @@ nav {
   margin-left: 8px;
 }
 
+.notification-btn {
+  background: none;
+  border: none;
+  color: var(--text2);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 4px;
+  position: relative;
+  margin-left: 8px;
+  transition: color 0.15s;
+}
+.notification-btn:hover { color: var(--text); }
+
+.notification-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  background: var(--red);
+  color: white;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'DM Mono', monospace;
+}
+
 .nav-links { display: flex; gap: 4px; }
 .nav-btn {
   padding: 7px 16px;
@@ -613,6 +643,64 @@ nav {
   transition: background 0.15s;
 }
 .retry-btn:hover { background: var(--accent2); }
+
+/* ============================================================
+   SKELETON SCREENS
+   ============================================================ */
+.skeleton {
+  background: linear-gradient(90deg, var(--border2) 25%, var(--border) 50%, var(--border2) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton-card {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+}
+.skeleton-card:last-child { border-bottom: none; }
+
+.skeleton-line {
+  height: 16px;
+  margin-bottom: 8px;
+}
+.skeleton-line:last-child { margin-bottom: 0; width: 60%; }
+
+.skeleton-line.short { width: 40%; }
+.skeleton-line.medium { width: 70%; }
+.skeleton-line.long { width: 90%; }
+
+.skeleton-decision {
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 14px;
+  align-items: start;
+}
+.skeleton-decision:last-child { border-bottom: none; }
+
+.skeleton-decision .skeleton-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 5px;
+}
+
+.skeleton-decision .skeleton-content {
+  flex: 1;
+}
+
+.skeleton-decision .skeleton-status {
+  width: 60px;
+  height: 20px;
+  border-radius: 6px;
+}
 
 /* ============================================================
    TALOUSDATA

@@ -26,6 +26,18 @@ const visibleNews   = { arctial: NEWS_LIMIT, kokkola: NEWS_LIMIT };
 let activeNewsTab   = 'arctial';
 let searchTimeout;
 
+// Advanced search filters
+let searchFilters = {
+  topic: '',
+  author: '',
+  dateFrom: '',
+  dateTo: ''
+};
+
+// Notifications
+let lastViewedDecisions = localStorage.getItem('lastViewedDecisions') || 0;
+let newDecisionsCount = 0;
+
 // ============================================================
 // VIEW NAVIGATION
 // ============================================================
@@ -41,8 +53,44 @@ function showView(name) {
 
   if (name === 'dashboard') {
     totalDecisionsCount = 0;
-    Promise.all([loadDecisions(), loadStats(), loadMeetings(), loadAgendas()]);
+    Promise.all([loadDecisions(), loadStats(), loadMeetings(), loadAgendas(), loadForecasts()]);
   }
+}
+
+// ============================================================
+// SKELETON SCREENS
+// ============================================================
+
+function showSkeleton(container, type, count = 5) {
+  let skeletonHTML = '';
+  for (let i = 0; i < count; i++) {
+    if (type === 'decisions') {
+      skeletonHTML += `
+        <div class="skeleton-decision">
+          <div class="skeleton skeleton-dot"></div>
+          <div class="skeleton-content">
+            <div class="skeleton skeleton-line long"></div>
+            <div class="skeleton skeleton-line medium"></div>
+          </div>
+          <div class="skeleton skeleton-status"></div>
+        </div>
+      `;
+    } else if (type === 'stats') {
+      skeletonHTML += `
+        <div class="skeleton-card">
+          <div class="skeleton skeleton-line short"></div>
+          <div class="skeleton skeleton-line medium"></div>
+          <div class="skeleton skeleton-line short"></div>
+        </div>
+      `;
+    }
+  }
+  container.innerHTML = skeletonHTML;
+  container.classList.add('pulse');
+}
+
+function hideSkeleton(container) {
+  container.classList.remove('pulse');
 }
 
 // ============================================================
@@ -101,13 +149,91 @@ async function loadStats() {
 }
 
 // ============================================================
+// FORECASTS
+// ============================================================
+
+async function loadForecasts() {
+  const forecastContainer = document.querySelector('.card .card-header + div');
+  if (!forecastContainer) return;
+
+  try {
+    // Try to load from API first
+    const res = await fetch(PROXY_BASE + '/forecasts');
+    if (res.ok) {
+      const data = await res.json();
+      renderForecasts(data);
+      return;
+    }
+  } catch (e) {
+    console.log('API forecasts not available, using fallback data');
+  }
+
+  // Fallback to hardcoded data (could be moved to a config file)
+  const fallbackData = {
+    bkt: { value: '+1.2%', source: 'ETLA 2026' },
+    employment: { value: '72.4%', source: 'TEM ennuste' },
+    population: { value: '48 100', source: 'Tilastokeskus' },
+    investments: [
+      { name: 'Arctial (arvio)', value: '~3 mrd €' },
+      { name: 'Kokkolan satama 2026', value: '45 M€' },
+      { name: 'Kaupungin investoinnit', value: '22.1 M€' }
+    ]
+  };
+  renderForecasts(fallbackData);
+}
+
+function renderForecasts(data) {
+  const forecastContainer = document.querySelector('.card .card-header + div');
+  if (!forecastContainer) return;
+
+  const html = `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;padding:16px 24px;">
+      <div>
+        <div style="font-size:0.68rem;color:var(--text3);margin-bottom:4px;">BKT-kasvu (K-P)</div>
+        <div style="font-size:1.1rem;font-weight:700;color:var(--green);">${data.bkt?.value || '+1.2%'}</div>
+        <div style="font-size:0.68rem;color:var(--text3);">${data.bkt?.source || 'ETLA 2026'}</div>
+      </div>
+      <div>
+        <div style="font-size:0.68rem;color:var(--text3);margin-bottom:4px;">Työllisyysaste</div>
+        <div style="font-size:1.1rem;font-weight:700;color:var(--cyan);">${data.employment?.value || '72.4%'}</div>
+        <div style="font-size:0.68rem;color:var(--text3);">${data.employment?.source || 'TEM ennuste'}</div>
+      </div>
+      <div>
+        <div style="font-size:0.68rem;color:var(--text3);margin-bottom:4px;">Väestöennuste 2030</div>
+        <div style="font-size:1.1rem;font-weight:700;">${data.population?.value || '48 100'}</div>
+        <div style="font-size:0.68rem;color:var(--text3);">${data.population?.source || 'Tilastokeskus'}</div>
+      </div>
+    </div>
+    <div style="padding:0 24px 16px;">
+      <div style="border-top:1px solid var(--border);padding-top:12px;">
+        <div style="font-size:0.68rem;color:var(--text3);margin-bottom:8px;">Investoinnit alueelle</div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          ${(data.investments || [
+            { name: 'Arctial (arvio)', value: '~3 mrd €' },
+            { name: 'Kokkolan satama 2026', value: '45 M€' },
+            { name: 'Kaupungin investoinnit', value: '22.1 M€' }
+          ]).map(inv => `
+            <div style="display:flex;justify-content:space-between;font-size:0.78rem;gap:12px;">
+              <span style="flex:1;min-width:0;">${inv.name}</span>
+              <span style="color:var(--green);font-weight:600;white-space:nowrap;">${inv.value}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      <div style="margin-top:10px;font-size:0.65rem;color:var(--text3);">⚠️ Ennustedata päivitetään manuaalisesti — lähde: ETLA, TEM, Tilastokeskus</div>
+    </div>
+  `;
+
+  forecastContainer.innerHTML = html;
+}
+
+// ============================================================
 // DECISIONS
 // ============================================================
 
 async function loadDecisions() {
   const list = document.getElementById('decisions-list');
-  list.innerHTML = '<div style="padding:32px 24px;text-align:center;color:var(--text3);font-size:0.8rem;">⏳ Ladataan päätöksiä Kokkolasta...</div>';
-  list.classList.add('pulse');
+  showSkeleton(list, 'decisions', 8);
 
   try {
     const res    = await fetch(PROXY_DECISIONS);
@@ -173,7 +299,8 @@ async function loadDecisions() {
     totalDecisionsCount += items.length;
     document.getElementById('decisions-count').textContent = totalDecisionsCount + ' kpl';
     applyFilters();
-    list.classList.remove('pulse');
+    hideSkeleton(list);
+    checkForNewDecisions();
   } catch (e) {
     console.error('Error loading decisions:', e);
     list.innerHTML = '<div style="padding:32px 24px;text-align:center;color:var(--text3);font-size:0.8rem;">Tietoja ei voida ladata juuri nyt. Yritä myöhemmin.</div>';
@@ -182,7 +309,7 @@ async function loadDecisions() {
     btn.textContent = 'Yritä uudelleen';
     btn.onclick = () => loadDecisions();
     list.appendChild(btn);
-    list.classList.remove('pulse');
+    hideSkeleton(list);
   }
 }
 
@@ -276,6 +403,7 @@ async function loadMeetings() {
   const current = parseInt(badge.textContent) || 0;
   badge.textContent = (current + items.length) + ' kpl';
   applyFilters();
+  checkForNewDecisions();
 }
 
 // ============================================================
@@ -420,6 +548,88 @@ function clearSearch() {
   document.getElementById('searchInput').focus();
 }
 
+function toggleAdvancedSearch() {
+  const advanced = document.getElementById('advanced-search');
+  const btn = document.getElementById('toggle-advanced-search');
+  const isVisible = advanced.style.display !== 'none';
+
+  if (isVisible) {
+    advanced.style.display = 'none';
+    btn.textContent = '🔍 Tarkempi haku';
+  } else {
+    advanced.style.display = 'block';
+    btn.textContent = '🔽 Piilota tarkempi haku';
+  }
+}
+
+function applyAdvancedFilters() {
+  searchFilters.topic = document.getElementById('search-topic').value.trim();
+  searchFilters.author = document.getElementById('search-author').value.trim();
+  searchFilters.dateFrom = document.getElementById('search-date-from').value;
+  searchFilters.dateTo = document.getElementById('search-date-to').value;
+  applyFilters();
+}
+
+function clearAdvancedFilters() {
+  document.getElementById('search-topic').value = '';
+  document.getElementById('search-author').value = '';
+  document.getElementById('search-date-from').value = '';
+  document.getElementById('search-date-to').value = '';
+  searchFilters = { topic: '', author: '', dateFrom: '', dateTo: '' };
+  applyFilters();
+}
+
+// ============================================================
+// NOTIFICATIONS
+// ============================================================
+
+function updateNotifications() {
+  const btn = document.getElementById('notification-btn');
+  const badge = document.getElementById('notification-badge');
+
+  if (newDecisionsCount > 0) {
+    btn.style.display = 'block';
+    badge.style.display = 'flex';
+    badge.textContent = newDecisionsCount > 99 ? '99+' : newDecisionsCount;
+  } else {
+    btn.style.display = 'none';
+    badge.style.display = 'none';
+  }
+}
+
+function markNotificationsAsRead() {
+  newDecisionsCount = 0;
+  lastViewedDecisions = totalDecisionsCount;
+  localStorage.setItem('lastViewedDecisions', lastViewedDecisions);
+  updateNotifications();
+}
+
+function checkForNewDecisions() {
+  if (totalDecisionsCount > lastViewedDecisions) {
+    newDecisionsCount = totalDecisionsCount - lastViewedDecisions;
+  }
+  updateNotifications();
+}
+
+function showNotificationPanel() {
+  // Simple notification panel - could be expanded to show list of new decisions
+  const hasNew = newDecisionsCount > 0;
+  const message = hasNew
+    ? `${newDecisionsCount} uutta päätöstä saatavilla!`
+    : 'Ei uusia päätöksiä.';
+
+  openModal(
+    'Ilmoitukset',
+    message,
+    'PäätösTutka',
+    '#'
+  );
+
+  if (hasNew) {
+    markNotificationsAsRead();
+  }
+}
+
 function applyFilters() {
   const now   = new Date();
   const items = document.querySelectorAll('#decisions-list .decision-item');
@@ -429,6 +639,8 @@ function applyFilters() {
     const status   = item.dataset.status;
     const text     = (item.dataset.text + ' ' + item.innerText).toLowerCase();
     const itemDate = item.dataset.date ? new Date(item.dataset.date) : null;
+    const title    = item.querySelector('.decision-title')?.textContent.toLowerCase() || '';
+    const meta     = item.querySelector('.decision-meta')?.textContent.toLowerCase() || '';
 
     let matchFilter = false;
     // Show all items regardless of status
@@ -448,8 +660,26 @@ function applyFilters() {
       matchFilter = status === activeFilter;
     }
 
+    // Apply advanced search filters
+    let matchAdvanced = true;
+    if (searchFilters.topic && !title.includes(searchFilters.topic.toLowerCase())) {
+      matchAdvanced = false;
+    }
+    if (searchFilters.author && !meta.includes(searchFilters.author.toLowerCase())) {
+      matchAdvanced = false;
+    }
+    if (searchFilters.dateFrom && itemDate) {
+      const fromDate = new Date(searchFilters.dateFrom);
+      if (itemDate < fromDate) matchAdvanced = false;
+    }
+    if (searchFilters.dateTo && itemDate) {
+      const toDate = new Date(searchFilters.dateTo);
+      toDate.setHours(23, 59, 59, 999); // End of day
+      if (itemDate > toDate) matchAdvanced = false;
+    }
+
     const matchQuery = !activeQuery || text.includes(activeQuery);
-    const show = matchFilter && matchQuery;
+    const show = matchFilter && matchQuery && matchAdvanced;
     item.style.display = show ? '' : 'none';
 
     if (show) {
@@ -776,6 +1006,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // News search
   document.getElementById('search-news')?.addEventListener('input', filterNews);
+
+  // Advanced search
+  document.getElementById('toggle-advanced-search')?.addEventListener('click', toggleAdvancedSearch);
+  document.getElementById('apply-filters')?.addEventListener('click', applyAdvancedFilters);
+  document.getElementById('clear-filters')?.addEventListener('click', clearAdvancedFilters);
+
+  // Notifications
+  document.getElementById('notification-btn')?.addEventListener('click', showNotificationPanel);
 
   // Keyboard navigation for filters
   document.querySelectorAll('[data-dfilter], [data-mfilter]').forEach(btn => {

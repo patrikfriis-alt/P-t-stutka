@@ -21,7 +21,10 @@
 <!-- NAV -->
 <nav role="navigation" aria-label="Päänavigaatio">
   <div class="nav-logo">Päätös<span class="accent">Tutka</span></div>
-  <span class="version">v1.6.1</span>
+  <span class="version">v1.7.0</span>
+  <button id="notification-btn" class="notification-btn" aria-label="Ilmoitukset" style="display:none;">
+    🔔<span id="notification-badge" class="notification-badge" style="display:none;"></span>
+  </button>
   <div class="search-wrap" id="nav-search" style="display:none">
     <span class="search-icon" aria-hidden="true">🔍</span>
     <input class="search-input" id="searchInput" type="search" placeholder="Hae päätöksiä..." maxlength="100" aria-label="Hae päätöksiä">
@@ -136,6 +139,32 @@
         <button class="filter-btn f-passed"  data-dfilter="viranomais">Viranomaispäätökset</button>
         <button class="filter-btn f-review"  data-dfilter="paatokset">Tehdyt päätökset</button>
         <button class="filter-btn f-upcoming" data-dfilter="esitykset">Esitykset</button>
+        <button id="toggle-advanced-search" style="margin-left:auto;padding:4px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text3);font-size:0.68rem;cursor:pointer;">🔍 Tarkempi haku</button>
+      </div>
+      <!-- Advanced Search -->
+      <div class="advanced-search" id="advanced-search" style="display:none;padding:16px 24px;border-bottom:1px solid var(--border);background:var(--bg3);">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
+          <div>
+            <label for="search-topic" style="font-size:0.68rem;color:var(--text3);display:block;margin-bottom:4px;">Aihe</label>
+            <input id="search-topic" type="text" placeholder="Esim. koulu, liikenne..." style="width:100%;padding:6px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text1);font-size:0.72rem;">
+          </div>
+          <div>
+            <label for="search-author" style="font-size:0.68rem;color:var(--text3);display:block;margin-bottom:4px;">Tekijä</label>
+            <input id="search-author" type="text" placeholder="Esim. kaupunginhallitus..." style="width:100%;padding:6px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text1);font-size:0.72rem;">
+          </div>
+          <div>
+            <label for="search-date-from" style="font-size:0.68rem;color:var(--text3);display:block;margin-bottom:4px;">Päivämäärä alkaen</label>
+            <input id="search-date-from" type="date" style="width:100%;padding:6px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text1);font-size:0.72rem;">
+          </div>
+          <div>
+            <label for="search-date-to" style="font-size:0.68rem;color:var(--text3);display:block;margin-bottom:4px;">Päivämäärä päättyen</label>
+            <input id="search-date-to" type="date" style="width:100%;padding:6px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text1);font-size:0.72rem;">
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button id="apply-filters" style="padding:6px 12px;background:var(--accent);color:#fff;border:none;border-radius:4px;font-size:0.72rem;cursor:pointer;">Käytä suodattimia</button>
+          <button id="clear-filters" style="padding:6px 12px;background:transparent;color:var(--text3);border:1px solid var(--border);border-radius:4px;font-size:0.72rem;cursor:pointer;">Tyhjennä</button>
+        </div>
       </div>
       <div id="decisions-list" role="feed" aria-label="Päätösluettelo">
         <div style="padding:32px 24px;text-align:center;color:var(--text3);font-size:0.8rem;">⏳ Ladataan päätöksiä...</div>
