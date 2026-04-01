@@ -153,7 +153,7 @@ async function loadStats() {
 // ============================================================
 
 async function loadForecasts() {
-  const forecastContainer = document.querySelector('.card .card-header + div');
+  const forecastContainer = document.getElementById('forecast-content');
   if (!forecastContainer) return;
 
   try {
@@ -183,7 +183,7 @@ async function loadForecasts() {
 }
 
 function renderForecasts(data) {
-  const forecastContainer = document.querySelector('.card .card-header + div');
+  const forecastContainer = document.getElementById('forecast-content');
   if (!forecastContainer) return;
 
   const html = `
