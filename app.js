@@ -580,26 +580,11 @@ function showLessNews(aihe) {
 }
 
 async function loadNews() {
-  // Load Arctial news
-  try {
-    const res  = await fetch(PROXY_BASE + '/news/arctial');
-    let items  = await res.json();
-    items.sort((a, b) => {
-      const parse = s => { if (!s) return 0; const m = s.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/); if (m) return new Date(m[3], m[2]-1, m[1]).getTime(); return new Date(s).getTime() || 0; };
-      return parse(b.julkaistu) - parse(a.julkaistu);
-    });
-    newsCache['arctial'] = items.length ? items : [];
-  } catch (e) {
-    console.error('Error loading news for arctial:', e);
-    newsCache['arctial'] = [];
-  }
-
-  // Load Kokkola news from multiple sources
+  // Load Arctial news from multiple sources
   try {
     const sources = [
-      { url: PROXY_BASE + '/news/kokkola', label: 'Arctial' },
-      { url: PROXY_BASE + '/rss?url=' + encodeURIComponent('https://feeds.yle.fi/uutiset/v1/recent.rss?publisherIds=YLE_UUTISET&concepts=18-135629'), label: 'YLE' },
-      { url: PROXY_BASE + '/rss?url=' + encodeURIComponent('https://www.ampparit.com/rss.php'), label: 'Ampparit' }
+      { url: PROXY_BASE + '/news/arctial', label: 'Arctial' },
+      { url: PROXY_BASE + '/rss?url=' + encodeURIComponent('https://news.google.com/rss/search?q=arctial&hl=fi-FI&gl=FI&ceid=FI:fi'), label: 'Google' }
     ];
     const results = await Promise.all(sources.map(async s => {
       console.log('Fetching URL:', s.url);
@@ -625,10 +610,59 @@ async function loadNews() {
         console.log('Parsed items from JSON:', items.length, 'for', s.url);
       }
       items.forEach(item => item.source = s.label);
-      if (s.label === 'Ampparit') {
-        items = items.filter(item => (item.otsikko + ' ' + (item.kuvaus || '')).toLowerCase().includes('kokkola'));
-        console.log('Filtered Ampparit items:', items.length);
+      return items;
+    }));
+    const allItems = [].concat(...results);
+    console.log('Total allItems for arctial before sorting:', allItems.length);
+    allItems.sort((a, b) => {
+      const parse = s => { if (!s) return 0; const m = s.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/); if (m) return new Date(m[3], m[2]-1, m[1]).getTime(); return new Date(s).getTime() || 0; };
+      return parse(b.julkaistu) - parse(a.julkaistu);
+    });
+    // Deduplicate by title
+    const seen = new Set();
+    const deduped = allItems.filter(item => {
+      if (seen.has(item.otsikko)) return false;
+      seen.add(item.otsikko);
+      return true;
+    });
+    console.log('Deduplicated items for arctial:', deduped.length);
+    newsCache['arctial'] = deduped.length ? deduped : [];
+  } catch (e) {
+    console.error('Error loading news for arctial:', e);
+    newsCache['arctial'] = [];
+  }
+
+  // Load Kokkola news from multiple sources
+  try {
+    const sources = [
+      { url: PROXY_BASE + '/news/kokkola', label: 'Arctial' },
+      { url: PROXY_BASE + '/rss?url=' + encodeURIComponent('https://feeds.yle.fi/uutiset/v1/recent.rss?publisherIds=YLE_UUTISET&concepts=18-135629'), label: 'YLE' },
+      { url: PROXY_BASE + '/rss?url=' + encodeURIComponent('https://news.google.com/rss/search?q=kokkola&hl=fi-FI&gl=FI&ceid=FI:fi'), label: 'Google' }
+    ];
+    const results = await Promise.all(sources.map(async s => {
+      console.log('Fetching URL:', s.url);
+      const res = await fetch(s.url);
+      console.log('Response status:', res.status, 'for', s.url);
+      let items = [];
+      if (s.url.includes('/rss')) {
+        // Parse as XML (UTF-8)
+        const text = await res.text();
+        console.log('Raw XML response length:', text.length, 'for', s.url);
+        const xml = new DOMParser().parseFromString(text, 'application/xml');
+        const xmlItems = xml.querySelectorAll('item');
+        items = Array.from(xmlItems).map(item => ({
+          otsikko: item.querySelector('title')?.textContent || '–',
+          kuvaus: item.querySelector('description')?.textContent || '',
+          julkaistu: item.querySelector('pubDate')?.textContent || '',
+          url: item.querySelector('link')?.textContent || '#'
+        }));
+        console.log('Parsed items from XML:', items.length, 'for', s.url);
+      } else {
+        // Parse as JSON
+        items = await res.json();
+        console.log('Parsed items from JSON:', items.length, 'for', s.url);
       }
+      items.forEach(item => item.source = s.label);
       return items;
     }));
     const allItems = [].concat(...results);
